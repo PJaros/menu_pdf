@@ -3,36 +3,55 @@
 
 use eframe::egui;
 use eframe::egui::Visuals;
+use eframe::egui::TextEdit;
+use egui_extras::DatePickerButton;
+use chrono::Local;
 
 fn main() -> eframe::Result {
     env_logger::init(); // Log to stderr (if you run with `RUST_LOG=debug`).
 
     let options = eframe::NativeOptions {
-        viewport: egui::ViewportBuilder::default().with_inner_size([320.0, 240.0]),
+        viewport: egui::ViewportBuilder::default().with_inner_size([720.0, 480.0]),
         ..Default::default()
     };
 
-    // Our application state:
-    let mut name = "Arthur".to_owned();
-    let mut age = 42;
+    let mut datum = Local::now().date_naive();
 
-    eframe::run_simple_native("My egui App", options, move |ctx, _frame| {
+    let mut montag_mittag = "".to_owned();
+    let mut montag_abend  = "".to_owned();
+    let mut dienstag_mittag = "".to_owned();
+    let mut dienstag_abend  = "".to_owned();
+    const EDIT_WIDTH: f32 = 200.0;
+
+    eframe::run_simple_native("Menu -> PDF", options, move |ctx, _frame| {
         egui::CentralPanel::default().show(ctx, |ui| {
             // From: https://github.com/emilk/egui/discussions/1627
             ctx.set_visuals(Visuals::light());
             ctx.set_pixels_per_point(1.5);
             
-            ui.heading("My egui Application");
             ui.horizontal(|ui| {
-                let name_label = ui.label("Your name: ");
-                ui.text_edit_singleline(&mut name)
-                    .labelled_by(name_label.id);
+                // ui.label("Datum: ");
+                let datum_label = ui.label("Datum: ");
+                ui.add(DatePickerButton::new(&mut datum))
+                    .labelled_by(datum_label.id);
             });
-            ui.add(egui::Slider::new(&mut age, 0..=120).text("age"));
-            if ui.button("Increment").clicked() {
-                age += 1;
-            }
-            ui.label(format!("Hello '{name}', age {age}"));
+            egui::Grid::new("grid_id").show(ui, |ui| {
+                ui.label("");
+                // ui.add_space(1.0);
+                ui.label("Mittag");
+                ui.label("Abend");
+                ui.end_row();
+
+                ui.label("Montag");
+                ui.add(TextEdit::multiline(&mut montag_mittag).min_size([EDIT_WIDTH, 1.0].into()));
+                ui.add(TextEdit::multiline(&mut montag_abend).min_size([EDIT_WIDTH, 1.0].into()));
+                ui.end_row();
+
+                ui.label("Dienstag");
+                ui.add(TextEdit::multiline(&mut dienstag_mittag).min_size([EDIT_WIDTH, 1.0].into()));
+                ui.add(TextEdit::multiline(&mut dienstag_abend).min_size([EDIT_WIDTH, 1.0].into()));
+                ui.end_row();
+            });
         });
     })
 }
