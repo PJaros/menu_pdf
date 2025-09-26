@@ -1,11 +1,11 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
 #![allow(rustdoc::missing_crate_level_docs)] // it's an example
 
-use eframe::egui;
-use eframe::egui::Visuals;
-use eframe::egui::TextEdit;
-use egui_extras::DatePickerButton;
 use chrono::Local;
+use eframe::egui;
+use eframe::egui::TextEdit;
+use eframe::egui::Visuals;
+use egui_extras::DatePickerButton;
 
 fn main() -> eframe::Result {
     env_logger::init(); // Log to stderr (if you run with `RUST_LOG=debug`).
@@ -18,9 +18,9 @@ fn main() -> eframe::Result {
     let mut datum = Local::now().date_naive();
 
     let mut montag_mittag = "".to_owned();
-    let mut montag_abend  = "".to_owned();
+    let mut montag_abend = "".to_owned();
     let mut dienstag_mittag = "".to_owned();
-    let mut dienstag_abend  = "".to_owned();
+    let mut dienstag_abend = "".to_owned();
     const EDIT_WIDTH: f32 = 200.0;
 
     eframe::run_simple_native("Menu -> PDF", options, move |ctx, _frame| {
@@ -28,16 +28,14 @@ fn main() -> eframe::Result {
             // From: https://github.com/emilk/egui/discussions/1627
             ctx.set_visuals(Visuals::light());
             ctx.set_pixels_per_point(1.5);
-            
+
             ui.horizontal(|ui| {
-                // ui.label("Datum: ");
                 let datum_label = ui.label("Datum: ");
                 ui.add(DatePickerButton::new(&mut datum))
                     .labelled_by(datum_label.id);
             });
             egui::Grid::new("grid_id").show(ui, |ui| {
                 ui.label("");
-                // ui.add_space(1.0);
                 ui.label("Mittag");
                 ui.label("Abend");
                 ui.end_row();
