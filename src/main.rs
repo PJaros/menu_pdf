@@ -15,15 +15,16 @@ fn main() -> eframe::Result {
         ..Default::default()
     };
 
-    let mut datum = Local::now().date_naive();
+    const EDIT_WIDTH: f32 = 200.0;
+    const TITLE: &str = "Menu → PDF";
 
+    let mut datum = Local::now().date_naive();
     let mut montag_mittag = "".to_owned();
     let mut montag_abend = "".to_owned();
     let mut dienstag_mittag = "".to_owned();
     let mut dienstag_abend = "".to_owned();
-    const EDIT_WIDTH: f32 = 200.0;
 
-    eframe::run_simple_native("Menu -> PDF", options, move |ctx, _frame| {
+    eframe::run_simple_native(TITLE, options, move |ctx, _frame| {
         egui::CentralPanel::default().show(ctx, |ui| {
             // From: https://github.com/emilk/egui/discussions/1627
             ctx.set_visuals(Visuals::light());
@@ -31,9 +32,13 @@ fn main() -> eframe::Result {
 
             ui.horizontal(|ui| {
                 let datum_label = ui.label("Datum: ");
-                ui.add(DatePickerButton::new(&mut datum))
+                ui.add(DatePickerButton::new(&mut datum).format("%e. %b %Y"))
                     .labelled_by(datum_label.id);
             });
+            // TODO: Add two buttons left and right with arrows to decrement and increment by a week
+            // TODO: Search why DatePickerButton is darker than TextEdit::multiline
+            // TODO: Add https://crates.io/crates/pretty_ini as a dependency and use it to save and restore the state
+            // TODO: Replace variables with array for each day
             egui::Grid::new("grid_id").show(ui, |ui| {
                 ui.label("");
                 ui.label("Mittag");
