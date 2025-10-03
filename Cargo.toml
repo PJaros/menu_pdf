@@ -14,6 +14,7 @@ env_logger = { version = "0.11.8", default-features = false, features = [
     "humantime",
 ] }
 chrono = "0.4.42"
+rust-ini = "0.21.3"
 
 [profile.release]
 #opt-level = "z"
