@@ -5,11 +5,12 @@ use chrono::{Datelike, Days, Local};
 use eframe::egui;
 use eframe::egui::TextEdit;
 use eframe::egui::Visuals;
-// use eframe::egui::{TextEdit, Ui};
 use egui_extras::DatePickerButton;
+use std::array;
 
-// use ini::Ini;
-// use std::path::Path;
+use ini::Ini;
+use std::path::Path;
+use std::string::String;
 
 const EDIT_WIDTH: f32 = 200.0;
 const TITLE: &str = "Menu → PDF";
@@ -25,6 +26,7 @@ const _WEEK_LONG: [&str; 7] = [
     "Sonntag",
 ];
 const _WEEK_SHORT: [&str; 7] = ["mo", "di", "mi", "do", "fr", "sa", "so"];
+const INI_FILE_PATH: &str = "demo_menu.ini";
 
 fn main() -> eframe::Result {
     env_logger::init(); // Log to stderr (if you run with `RUST_LOG=debug`).
@@ -34,29 +36,24 @@ fn main() -> eframe::Result {
         ..Default::default()
     };
 
-    /*
-        const INI_FILE_PATH: &'static str = "menu.ini";
-        let ini_path = Path::new(INI_FILE_PATH);
-        println!("{}", ini_path.exists());
+    let ini_path = Path::new(INI_FILE_PATH);
+    let conf: Ini = match ini_path.exists() {
+        true => Ini::load_from_file(ini_path).expect("Error loading ini file"),
+        false => Ini::new(),
+    };
 
-        let mut conf;
-        if (ini_path.exists()) {
-            conf = Ini::load_from_file(ini_path).expect("Error loading ini file");
-        } else {
-            conf = Ini::new();
-        }
-        conf.write_to_file(ini_path)
-            .expect("Error writing ini file");
-    */
+    let mo_mo_ini = conf.get_from_or(Some("Week"), "mo_mo", "").to_owned();
+    let mo_ab_ini = conf.get_from_or(Some("Week"), "mo_ab", "").to_owned();
 
-    let mut _array_sting = ["1".to_string(), "2".to_string()];
-    let mut _array_sting2 = [["1".to_string(), "2".to_string()], ["3".to_string(), "4".to_string()]];
-    let mut _array_str: [&str; 2] = ["1", "2"];
-    let mut _array2_str: [[&str; 2]; 2] = [["1", "2"], ["3", "4"]];
-    let mut montag_mittag = "".to_owned();
-    let mut montag_abend = "".to_owned();
+    // let init = || "".to_string();
+    // let mut _array2_string: [[String; 7]; 2] = array::from_fn(|_y| array::from_fn(|_x| init()));
+    let mut week_string: [[String; 7]; 2] = array::from_fn(|_y| array::from_fn(|_x| "".to_string()));
+
     let mut dienstag_mittag = "".to_owned();
     let mut dienstag_abend = "".to_owned();
+
+    week_string[0][0] = mo_mo_ini.clone();
+    week_string[0][1] = mo_ab_ini.clone();
 
     // Calculate closest past (or today's) monday
     let mut datum = Local::now().date_naive();
@@ -82,7 +79,7 @@ fn main() -> eframe::Result {
                 }
             });
 
-            // TODO: Use arrays to retain and read/write them ini file
+            // TODO: Use arrays to write the ini file
             // TODO: On date selection: Check if a monday was selected. If not, correct it to the next past monday
             egui::Grid::new("grid_id").show(ui, |ui| {
                 ui.label("");
@@ -92,8 +89,10 @@ fn main() -> eframe::Result {
                 ui.end_row();
 
                 ui.label("Montag");
-                ui.add(TextEdit::multiline(&mut montag_mittag).min_size([EDIT_WIDTH, 1.0].into()));
-                ui.add(TextEdit::multiline(&mut montag_abend).min_size([EDIT_WIDTH, 1.0].into()));
+                let mut mo_string = week_string[0][0].clone();
+                let mut ab_string = week_string[0][1].clone();
+                ui.add(TextEdit::multiline(&mut mo_string).min_size([EDIT_WIDTH, 1.0].into()));
+                ui.add(TextEdit::multiline(&mut ab_string).min_size([EDIT_WIDTH, 1.0].into()));
                 ui.end_row();
 
                 ui.label("Dienstag");
