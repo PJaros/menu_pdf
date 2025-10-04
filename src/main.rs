@@ -50,8 +50,6 @@ fn main() -> eframe::Result {
         for (x, time) in TIME_SHORT.iter().enumerate() {
             let key = format!("{day}_{time}");
             week_string[y][x] = conf.get_from_or(Some("Week"), key.as_str(), "").to_owned();
-            let string = week_string[y][x].clone();
-            println!("{key} = {string}");
         }
     }
 
