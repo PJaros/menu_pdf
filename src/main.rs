@@ -6,6 +6,7 @@ use eframe::egui;
 use eframe::egui::TextEdit;
 use eframe::egui::Visuals;
 use egui_extras::DatePickerButton;
+use log::info;
 use std::array;
 
 use ini::Ini;
@@ -15,8 +16,8 @@ use std::string::String;
 const EDIT_WIDTH: f32 = 200.0;
 const TITLE: &str = "Menu → PDF";
 const TIME_LONG: [&str; 2] = ["Mittag", "Abend"];
-const _TIME_SHORT: [&str; 2] = ["mi", "ab"];
-const _WEEK_LONG: [&str; 7] = [
+const TIME_SHORT: [&str; 2] = ["mi", "ab"];
+const DAY_LONG: [&str; 7] = [
     "Montag",
     "Dienstag",
     "Mittwoch",
@@ -25,14 +26,14 @@ const _WEEK_LONG: [&str; 7] = [
     "Samstag",
     "Sonntag",
 ];
-const _WEEK_SHORT: [&str; 7] = ["mo", "di", "mi", "do", "fr", "sa", "so"];
+const DAY_SHORT: [&str; 7] = ["mo", "di", "mi", "do", "fr", "sa", "so"];
 const INI_FILE_PATH: &str = "demo_menu.ini";
 
 fn main() -> eframe::Result {
     env_logger::init(); // Log to stderr (if you run with `RUST_LOG=debug`).
 
     let options = eframe::NativeOptions {
-        viewport: egui::ViewportBuilder::default().with_inner_size([720.0, 480.0]),
+        viewport: egui::ViewportBuilder::default().with_inner_size([760.0, 800.0]),
         ..Default::default()
     };
 
@@ -42,18 +43,17 @@ fn main() -> eframe::Result {
         false => Ini::new(),
     };
 
-    let mo_mo_ini = conf.get_from_or(Some("Week"), "mo_mo", "").to_owned();
-    let mo_ab_ini = conf.get_from_or(Some("Week"), "mo_ab", "").to_owned();
+    // Initialize 2D array, from: https://users.rust-lang.org/t/how-to-init-2d-array-using-function/80737/2
+    let mut week_string: [[String; 2]; 7] = array::from_fn(|_y| array::from_fn(|_x| "".to_string()));
 
-    // let init = || "".to_string();
-    // let mut _array2_string: [[String; 7]; 2] = array::from_fn(|_y| array::from_fn(|_x| init()));
-    let mut week_string: [[String; 7]; 2] = array::from_fn(|_y| array::from_fn(|_x| "".to_string()));
-
-    let mut dienstag_mittag = "".to_owned();
-    let mut dienstag_abend = "".to_owned();
-
-    week_string[0][0] = mo_mo_ini.clone();
-    week_string[0][1] = mo_ab_ini.clone();
+    for (y, day) in DAY_SHORT.iter().enumerate() {
+        for (x, time) in TIME_SHORT.iter().enumerate() {
+            let key = format!("{day}_{time}");
+            week_string[y][x] = conf.get_from_or(Some("Week"), key.as_str(), "").to_owned();
+            let string = week_string[y][x].clone();
+            println!("{key} = {string}");
+        }
+    }
 
     // Calculate closest past (or today's) monday
     let mut datum = Local::now().date_naive();
@@ -88,17 +88,23 @@ fn main() -> eframe::Result {
                 }
                 ui.end_row();
 
-                ui.label("Montag");
-                let mut mo_string = week_string[0][0].clone();
-                let mut ab_string = week_string[0][1].clone();
-                ui.add(TextEdit::multiline(&mut mo_string).min_size([EDIT_WIDTH, 1.0].into()));
-                ui.add(TextEdit::multiline(&mut ab_string).min_size([EDIT_WIDTH, 1.0].into()));
-                ui.end_row();
+                for (i, day) in DAY_LONG.iter().enumerate() {
+                    ui.label(*day);
+                    ui.add(TextEdit::multiline(&mut week_string[i][0]).min_size([EDIT_WIDTH, 1.0].into()));
+                    ui.add(TextEdit::multiline(&mut week_string[i][1]).min_size([EDIT_WIDTH, 1.0].into()));
+                    ui.end_row();
+                }
 
-                ui.label("Dienstag");
-                ui.add(TextEdit::multiline(&mut dienstag_mittag).min_size([EDIT_WIDTH, 1.0].into()));
-                ui.add(TextEdit::multiline(&mut dienstag_abend).min_size([EDIT_WIDTH, 1.0].into()));
-                ui.end_row();
+                ui.label("");
+                let save_button = ui.button("Print content to log");
+                if save_button.clicked() {
+                    // set RUST_LOG to show log, eg: RUST_LOG=info cargo run
+                    for (y, day) in DAY_SHORT.iter().enumerate() {
+                        for (x, time) in TIME_SHORT.iter().enumerate() {
+                            info!("{}_{} = {}", day, time, week_string[y][x]);
+                        }
+                    }
+                }
             });
         });
     })

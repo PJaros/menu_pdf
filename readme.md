@@ -1,12 +1,15 @@
 # Menu -> PDF
 
-Generates menu pdf for a weekly overview what is going to be cooked for lunch and dinner.
+Generates menu pdf for a weekly overview what is going to be cooked forlunch and dinner.
 
 ## Current state
 
-This is a work in progress. I shows a egui window with a calendar selector and several multiline editors.
+This project is still work in progress. And important features are still missing.
+Currently it shows a egui window with a calendar selector and several multiline editors.
+Data is loaded from the demo_menu-ini file.
 
-Currently I'm working on dealing with figuring out how to store egui fields in a 2D array containing string data.
-Later I will persist those values within a INI file.
-
-There is a typst prototype ready to be included. It will use the data to generate the pdf. 
+Todo:
+ - Reading and writing to INI files is test. But currently only a demo-file read is implemented.
+ - Selecting a new date needs to be corrected to closest past monday 
+ - There is a typst prototype ready to be included. Typst will need to added to this project with typst-as-lib or typst
+   will need to ship with a compiled typst. 

@@ -1853,6 +1853,7 @@ dependencies = [
  "eframe",
  "egui_extras",
  "env_logger",
+ "log",
  "rust-ini",
 ]
 

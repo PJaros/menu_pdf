@@ -9,12 +9,10 @@ publish = false
 [dependencies]
 eframe = { version = "0.32.3", features = ["default"] }
 egui_extras = { version = "0.32.3", features = ["datepicker"] }
-env_logger = { version = "0.11.8", default-features = false, features = [
-    "auto-color",
-    "humantime",
-] }
+env_logger = { version = "0.11.8", default-features = false, features = ["auto-color", "humantime"] }
 chrono = "0.4.42"
 rust-ini = "0.21.3"
+log = "0.4.28"
 
 [profile.release]
 #opt-level = "z"
