@@ -44,7 +44,8 @@ fn main() -> eframe::Result {
     };
 
     // Initialize 2D array, from: https://users.rust-lang.org/t/how-to-init-2d-array-using-function/80737/2
-    let mut week_string: [[String; 2]; 7] = array::from_fn(|_y| array::from_fn(|_x| "".to_string()));
+    let mut week_string: [[String; 2]; 7] =
+        array::from_fn(|_y| array::from_fn(|_x| "".to_string()));
 
     for (y, day) in DAY_SHORT.iter().enumerate() {
         for (x, time) in TIME_SHORT.iter().enumerate() {
@@ -88,8 +89,14 @@ fn main() -> eframe::Result {
 
                 for (i, day) in DAY_LONG.iter().enumerate() {
                     ui.label(*day);
-                    ui.add(TextEdit::multiline(&mut week_string[i][0]).min_size([EDIT_WIDTH, 1.0].into()));
-                    ui.add(TextEdit::multiline(&mut week_string[i][1]).min_size([EDIT_WIDTH, 1.0].into()));
+                    ui.add(
+                        TextEdit::multiline(&mut week_string[i][0])
+                            .min_size([EDIT_WIDTH, 1.0].into()),
+                    );
+                    ui.add(
+                        TextEdit::multiline(&mut week_string[i][1])
+                            .min_size([EDIT_WIDTH, 1.0].into()),
+                    );
                     ui.end_row();
                 }
 
