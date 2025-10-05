@@ -9,7 +9,6 @@ Currently it shows a egui window with a calendar selector and several multiline 
 Data is loaded from the demo_menu-ini file.
 
 Todo:
- - Reading and writing to INI files is test. But currently only a demo-file read is implemented.
- - Selecting a new date needs to be corrected to closest past monday 
+ - Reading and writing to INI files is tested. But currently only a demo-file read is implemented.
  - There is a typst prototype ready to be included. Typst will need to added to this project with typst-as-lib or typst
    will need to ship with a compiled typst. 

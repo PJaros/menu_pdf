@@ -1,7 +1,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
 #![allow(rustdoc::missing_crate_level_docs)] // it's an example
 
-use chrono::{Datelike, Days, Local};
+use chrono::{Datelike, Days, Local, NaiveDate};
 use eframe::egui;
 use eframe::egui::TextEdit;
 use eframe::egui::Visuals;
@@ -29,7 +29,21 @@ const DAY_LONG: [&str; 7] = [
 const DAY_SHORT: [&str; 7] = ["mo", "di", "mi", "do", "fr", "sa", "so"];
 const INI_FILE_PATH: &str = "demo_menu.ini";
 
+// TODO: Load/Save data when changing week. Also add a save button.
+// TODO: Persist window location
+// TODO: Add application icon
+// TODO: Integrate Typst
+
+fn get_closest_last_monday(datum: &mut NaiveDate) -> NaiveDate {
+    let day: u64 = (datum.weekday().number_from_monday() - 1).into();
+    datum
+        .checked_sub_days(Days::new(day))
+        .to_owned()
+        .expect("Calculating closest past monday failed")
+}
+
 fn main() -> eframe::Result {
+    const DAYS_IN_WEEK: Days = Days::new(7);
     env_logger::init(); // Log to stderr (if you run with `RUST_LOG=debug`).
 
     let options = eframe::NativeOptions {
@@ -56,8 +70,7 @@ fn main() -> eframe::Result {
 
     // Calculate closest past (or today's) monday
     let mut datum = Local::now().date_naive();
-    let day: u64 = (datum.weekday().number_from_monday() - 1).into();
-    datum = datum.checked_sub_days(Days::new(day)).to_owned().unwrap();
+    datum = get_closest_last_monday(&mut datum);
 
     eframe::run_simple_native(TITLE, options, move |ctx, _frame| {
         egui::CentralPanel::default().show(ctx, |ui| {
@@ -68,18 +81,27 @@ fn main() -> eframe::Result {
             ui.horizontal(|ui| {
                 ui.label("Datum: ");
                 let left_button = ui.button("<");
-                if left_button.clicked() {
-                    datum = datum.checked_sub_days(Days::new(7)).to_owned().unwrap();
-                };
-                ui.add(DatePickerButton::new(&mut datum).format("%e. %b %Y"));
+                let datepicker_button =
+                    ui.add(DatePickerButton::new(&mut datum).format("%e. %b %Y"));
                 let right_button = ui.button(">");
+
+                if left_button.clicked() {
+                    datum = datum
+                        .checked_sub_days(DAYS_IN_WEEK)
+                        .to_owned()
+                        .expect("Subtracting 7 days failed.");
+                };
+                if datepicker_button.changed() {
+                    datum = get_closest_last_monday(&mut datum);
+                }
                 if right_button.clicked() {
-                    datum = datum.checked_add_days(Days::new(7)).to_owned().unwrap();
+                    datum = datum
+                        .checked_add_days(DAYS_IN_WEEK)
+                        .to_owned()
+                        .expect("Adding 7 days failed.");
                 }
             });
 
-            // TODO: Use arrays to write the ini file
-            // TODO: On date selection: Check if a monday was selected. If not, correct it to the next past monday
             egui::Grid::new("grid_id").show(ui, |ui| {
                 ui.label("");
                 for s in TIME_LONG.into_iter() {
