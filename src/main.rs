@@ -27,12 +27,10 @@ const DAY_LONG: [&str; 7] = [
     "Sonntag",
 ];
 const DAY_SHORT: [&str; 7] = ["mo", "di", "mi", "do", "fr", "sa", "so"];
-const INI_FILE_PATH: &str = "demo_menu.ini";
-
-// TODO: Load/Save data when changing week. Also add a save button.
-// TODO: Persist window location
-// TODO: Add application icon
-// TODO: Integrate Typst
+const DEMO_INI_FILE_PATH: &str = "demo_menu.ini";
+const INI_FILE_PATH: &str = "menu.ini";
+const UI_DATE_FORMAT: &str = "%e. %b %Y";
+const INI_DATE_FORMAT: &str = "%Y-%m-%d";
 
 fn get_closest_last_monday(datum: &mut NaiveDate) -> NaiveDate {
     let day: u64 = (datum.weekday().number_from_monday() - 1).into();
@@ -51,7 +49,7 @@ fn main() -> eframe::Result {
         ..Default::default()
     };
 
-    let ini_path = Path::new(INI_FILE_PATH);
+    let ini_path = Path::new(DEMO_INI_FILE_PATH);
     let conf: Ini = match ini_path.exists() {
         true => Ini::load_from_file(ini_path).expect("Error loading ini file"),
         false => Ini::new(),
@@ -71,6 +69,7 @@ fn main() -> eframe::Result {
     // Calculate closest past (or today's) monday
     let mut datum = Local::now().date_naive();
     datum = get_closest_last_monday(&mut datum);
+    let mut selected_monday = datum.clone(); // save selected monday
 
     eframe::run_simple_native(TITLE, options, move |ctx, _frame| {
         egui::CentralPanel::default().show(ctx, |ui| {
@@ -82,7 +81,7 @@ fn main() -> eframe::Result {
                 ui.label("Datum: ");
                 let left_button = ui.button("<");
                 let datepicker_button =
-                    ui.add(DatePickerButton::new(&mut datum).format("%e. %b %Y"));
+                    ui.add(DatePickerButton::new(&mut datum).format(UI_DATE_FORMAT));
                 let right_button = ui.button(">");
 
                 if left_button.clicked() {
@@ -90,15 +89,23 @@ fn main() -> eframe::Result {
                         .checked_sub_days(DAYS_IN_WEEK)
                         .to_owned()
                         .expect("Subtracting 7 days failed.");
+                    selected_monday = datum.clone();
                 };
                 if datepicker_button.changed() {
-                    datum = get_closest_last_monday(&mut datum);
+                    datum = get_closest_last_monday(&mut datum).to_owned();
+                    if selected_monday == datum {
+                        info!("Same date. selected_monday: {}, datum: {}", selected_monday, datum);
+                    } else {
+                        info!("Different date. selected_monday: {}, datum: {}", selected_monday, datum);
+                    }
+                    selected_monday = datum.clone();
                 }
                 if right_button.clicked() {
                     datum = datum
                         .checked_add_days(DAYS_IN_WEEK)
                         .to_owned()
                         .expect("Adding 7 days failed.");
+                    selected_monday = datum.clone();
                 }
             });
 
@@ -126,6 +133,7 @@ fn main() -> eframe::Result {
                 let save_button = ui.button("Print content to log");
                 if save_button.clicked() {
                     // set RUST_LOG to show log, eg: RUST_LOG=info cargo run
+                    info!("[{}]", datum.format(INI_DATE_FORMAT));
                     for (y, day) in DAY_SHORT.iter().enumerate() {
                         for (x, time) in TIME_SHORT.iter().enumerate() {
                             info!("{}_{} = {}", day, time, week_string[y][x]);

@@ -1,6 +1,6 @@
 # Menu -> PDF
 
-Generates menu pdf for a weekly overview what is going to be cooked forlunch and dinner.
+Generates menu pdf for a weekly overview what is going to be cooked for lunch and dinner.
 
 ## Current state
 
