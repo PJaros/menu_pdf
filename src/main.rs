@@ -112,9 +112,9 @@ fn save_if_needed(week_data: &WeekData, datum: &NaiveDate) {
                 .to_owned();
         }
     }
-    if !is_week_equal(&week_loaded, &week_data) {
+    if !is_week_equal(&week_loaded, week_data) {
         info!("Saving, was not equal");
-        save_week(&week_data, date_string.as_str());
+        save_week(week_data, date_string.as_str());
     }
 }
 
@@ -159,7 +159,7 @@ fn main() -> eframe::Result {
     // Calculate closest past (or today's) monday
     let mut datum = Local::now().date_naive();
     datum = get_closest_last_monday(&mut datum);
-    let mut selected_monday = datum.clone(); // save selected monday
+    let mut selected_monday = datum; // save selected monday
     let mut week_data = load_week(&datum);
 
     eframe::run_simple_native(TITLE, options, move |ctx, _frame| {
@@ -181,7 +181,7 @@ fn main() -> eframe::Result {
                         .checked_sub_days(DAYS_IN_WEEK)
                         .to_owned()
                         .expect("Subtracting 7 days failed.");
-                    selected_monday = datum.clone();
+                    selected_monday = datum;
                     week_data = load_week(&datum);
                 };
                 if datepicker_button.changed() {
@@ -216,7 +216,7 @@ fn main() -> eframe::Result {
                         }
                         week_data = week_string;
                     }
-                    selected_monday = datum.clone();
+                    selected_monday = datum;
                 }
                 if right_button.clicked() {
                     save_if_needed(&week_data, &datum);
@@ -224,7 +224,7 @@ fn main() -> eframe::Result {
                         .checked_add_days(DAYS_IN_WEEK)
                         .to_owned()
                         .expect("Adding 7 days failed.");
-                    selected_monday = datum.clone();
+                    selected_monday = datum;
                     week_data = load_week(&datum);
                 }
             });
