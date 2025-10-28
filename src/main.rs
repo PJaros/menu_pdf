@@ -8,6 +8,8 @@ use eframe::{Frame, egui};
 use egui_extras::DatePickerButton;
 use log::info;
 
+use eframe::egui::FontFamily::Proportional;
+use eframe::egui::TextStyle::{Body, Button, Heading, Monospace, Small};
 use ini::Ini;
 use std::path::Path;
 use week::WeekData;
@@ -68,7 +70,7 @@ fn main() -> eframe::Result {
     env_logger::init(); // Log to stderr (if you run with `RUST_LOG=debug`).
 
     let options = eframe::NativeOptions {
-        viewport: egui::ViewportBuilder::default().with_inner_size([760.0, 800.0]),
+        viewport: egui::ViewportBuilder::default().with_inner_size([660.0, 710.0]),
         ..Default::default()
     };
 
@@ -96,7 +98,18 @@ fn main() -> eframe::Result {
         egui::CentralPanel::default().show(ctx, |ui| {
             // From: https://github.com/emilk/egui/discussions/1627
             ctx.set_visuals(Visuals::light());
-            ctx.set_pixels_per_point(1.5);
+            ctx.set_pixels_per_point(2.0);
+
+            // let mut style = (*ctx.style()).clone();
+            // style.text_styles = [
+            //     (Heading, FontId::new(30.0, Proportional)),
+            //     (Body, FontId::new(18.0, Proportional)),
+            //     (Monospace, FontId::new(16.0, Proportional)),
+            //     (Button, FontId::new(16.0, Proportional)),
+            //     (Small, FontId::new(10.0, Proportional)),
+            // ]
+            // .into();
+            // ctx.set_style(style);
 
             ui.horizontal(|ui| {
                 ui.label("Datum: ");
