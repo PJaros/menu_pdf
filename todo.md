@@ -2,6 +2,7 @@
 
  - Save on close
    - Rewrite to https://github.com/emilk/egui/tree/main/examples/confirm_exit
+   - or automatically save without asking
  - Rearrange (remove?) load- and save-button
  - Integrate Typst
  - Make Save on close optional
