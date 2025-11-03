@@ -7,8 +7,8 @@ license = "MIT OR Apache-2.0"
 publish = false
 
 [dependencies]
-eframe = { version = "0.32.3", features = ["default"] }
-egui_extras = { version = "0.32.3", features = ["datepicker"] }
+eframe = { version = "0.33.0", features = ["default"] }
+egui_extras = { version = "0.33.0", features = ["datepicker"] }
 env_logger = { version = "0.11.8", default-features = false, features = ["auto-color", "humantime"] }
 chrono = "0.4.42"
 rust-ini = "0.21.3"
