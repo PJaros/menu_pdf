@@ -79,38 +79,6 @@ impl MenuPdfApp {
     }
 }
 
-// fn main() -> eframe::Result {
-    // const DAYS_IN_WEEK: Days = Days::new(7);
-    // env_logger::init(); // Log to stderr (if you run with `RUST_LOG=debug`).
-    //
-    // let options = eframe::NativeOptions {
-    //     viewport: egui::ViewportBuilder::default().with_inner_size([660.0, 710.0]),
-    //     ..Default::default()
-    // };
-
-    // let ini_path = Path::new(DEMO_INI_FILE_PATH);
-    // let conf: Ini = match ini_path.exists() {
-    //     true => Ini::load_from_file(ini_path).expect("Error loading ini file"),
-    //     false => Ini::new(),
-    // };
-    //
-    // let mut week_data: WeekData = create_empty_week();
-    // for (y, day) in DAY_SHORT.iter().enumerate() {
-    //     for (x, time) in TIME_SHORT.iter().enumerate() {
-    //         let key = format!("{day}_{time}");
-    //         week_data[y][x] = conf.get_from_or(Some("Week"), key.as_str(), "").to_owned();
-    //     }
-    // }
-
-    // Calculate closest past (or today's) monday
-    // let mut datum = Local::now().date_naive();
-    // datum = get_closest_last_monday(&mut datum);
-    // let mut selected_monday = datum; // save selected monday
-    // let mut week_data = week::load_week(&datum);
-
-// }
-// eframe::run_simple_native(TITLE, options, move |ctx, _frame| {
-    //     egui::CentralPanel::default().show(ctx, |ui| {
 impl eframe::App for MenuPdfApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
@@ -220,36 +188,11 @@ impl eframe::App for MenuPdfApp {
                     week::save_if_needed(&self.week_data, &datum);
                 }
             });
+
+            // From: https://github.com/emilk/egui/blob/main/examples/confirm_exit/src/main.rs
+            if ctx.input(|i| i.viewport().close_requested()) {
+                week::save_if_needed(&self.week_data, &datum);
+            }
         });
     }
-
-    // if ctx.input(|i| i.viewport().close_requested()) {
-    //     if self.allowed_to_close {
-    //         // do nothing - we will close
-    //     } else {
-    //         ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
-    //         self.show_confirmation_dialog = true;
-    //     }
-    // }
-    //
-    // if self.show_confirmation_dialog {
-    //     egui::Window::new("Do you want to quit?")
-    //         .pivot(Align2::CENTER_CENTER) // .curent_pos(pos)
-    //         .collapsible(false)
-    //         .resizable(false)
-    //         .show(ctx, |ui| {
-    //             ui.horizontal(|ui| {
-    //                 if ui.button("No").clicked() {
-    //                     self.show_confirmation_dialog = false;
-    //                     self.allowed_to_close = false;
-    //                 }
-    //
-    //                 if ui.button("Yes").clicked() {
-    //                     self.show_confirmation_dialog = false;
-    //                     self.allowed_to_close = true;
-    //                     ui.ctx().send_viewport_cmd(egui::ViewportCommand::Close);
-    //                 }
-    //             });
-    //         });
-    // }
 }
