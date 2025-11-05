@@ -79,6 +79,8 @@ impl MenuPdfApp {
     }
 }
 
+// TODO: Size window to fit content -> https://github.com/emilk/egui/discussions/2858
+
 impl eframe::App for MenuPdfApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
