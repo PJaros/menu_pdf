@@ -44,35 +44,49 @@ fn get_closest_last_monday(datum: &mut NaiveDate) -> NaiveDate {
         .expect("Calculating closest past monday failed")
 }
 
-// fn main() -> eframe::Result {
-//     env_logger::init(); // Log to stderr (if you run with `RUST_LOG=debug`).
-//
-//     let options = eframe::NativeOptions {
-//         viewport: egui::ViewportBuilder::default().with_inner_size([760.0, 800.0]),
-//         ..Default::default()
-//     };
-//
-//     eframe::run_native(
-//         TITLE,
-//         options,
-//         Box::new(|_cc| Ok(Box::<MenuPdfApp>::default())),
-//     )
-// }
-//
-// #[derive(Default)]
-// struct MenuPdfApp {
-//     show_confirmation_dialog: bool,
-//     allowed_to_close: bool,
-// }
-
 fn main() -> eframe::Result {
-    const DAYS_IN_WEEK: Days = Days::new(7);
     env_logger::init(); // Log to stderr (if you run with `RUST_LOG=debug`).
 
     let options = eframe::NativeOptions {
-        viewport: egui::ViewportBuilder::default().with_inner_size([660.0, 710.0]),
+        viewport: egui::ViewportBuilder::default().with_inner_size([760.0, 800.0]),
         ..Default::default()
     };
+
+    eframe::run_native(
+        TITLE,
+        options,
+        // Box::new(|cc| Ok(Box::new(MenuPdfApp::new(cc)))),
+        Box::new(|_cc| Ok(Box::new(MenuPdfApp::new()))),
+    )
+}
+
+#[derive(Default)]
+struct MenuPdfApp {
+    selected_monday: NaiveDate,
+    week_data: WeekData,
+}
+
+impl MenuPdfApp {
+    // pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
+    pub fn new() -> Self {
+        let mut datum = Local::now().date_naive();
+        datum = get_closest_last_monday(&mut datum);
+
+        Self {
+            selected_monday: datum,
+            week_data: week::load_week(&datum),
+        }
+    }
+}
+
+// fn main() -> eframe::Result {
+    // const DAYS_IN_WEEK: Days = Days::new(7);
+    // env_logger::init(); // Log to stderr (if you run with `RUST_LOG=debug`).
+    //
+    // let options = eframe::NativeOptions {
+    //     viewport: egui::ViewportBuilder::default().with_inner_size([660.0, 710.0]),
+    //     ..Default::default()
+    // };
 
     // let ini_path = Path::new(DEMO_INI_FILE_PATH);
     // let conf: Ini = match ini_path.exists() {
@@ -89,12 +103,16 @@ fn main() -> eframe::Result {
     // }
 
     // Calculate closest past (or today's) monday
-    let mut datum = Local::now().date_naive();
-    datum = get_closest_last_monday(&mut datum);
-    let mut selected_monday = datum; // save selected monday
-    let mut week_data = week::load_week(&datum);
+    // let mut datum = Local::now().date_naive();
+    // datum = get_closest_last_monday(&mut datum);
+    // let mut selected_monday = datum; // save selected monday
+    // let mut week_data = week::load_week(&datum);
 
-    eframe::run_simple_native(TITLE, options, move |ctx, _frame| {
+// }
+// eframe::run_simple_native(TITLE, options, move |ctx, _frame| {
+    //     egui::CentralPanel::default().show(ctx, |ui| {
+impl eframe::App for MenuPdfApp {
+    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
             // From: https://github.com/emilk/egui/discussions/1627
             ctx.set_visuals(Visuals::light());
@@ -111,6 +129,7 @@ fn main() -> eframe::Result {
             // .into();
             // ctx.set_style(style);
 
+            let mut datum = self.selected_monday;
             ui.horizontal(|ui| {
                 ui.label("Datum: ");
                 let left_button = ui.button("<");
@@ -119,27 +138,27 @@ fn main() -> eframe::Result {
                 let right_button = ui.button(">");
 
                 if left_button.clicked() {
-                    week::save_if_needed(&week_data, &datum);
+                    week::save_if_needed(&self.week_data, &datum);
                     datum = datum
                         .checked_sub_days(DAYS_IN_WEEK)
                         .to_owned()
                         .expect("Subtracting 7 days failed.");
-                    selected_monday = datum;
-                    week_data = week::load_week(&datum);
+                    self.selected_monday = datum;
+                    self.week_data = week::load_week(&datum);
                 };
                 if datepicker_button.changed() {
                     datum = get_closest_last_monday(&mut datum).to_owned();
-                    if selected_monday == datum {
+                    if self.selected_monday == datum {
                         info!(
                             "Same date. selected_monday: {}, datum: {}",
-                            selected_monday, datum
+                            self.selected_monday, datum
                         );
                     } else {
                         info!(
                             "Different date. selected_monday: {}, datum: {}",
-                            selected_monday, datum
+                            self.selected_monday, datum
                         );
-                        week::save_if_needed(&week_data, &selected_monday);
+                        week::save_if_needed(&self.week_data, &self.selected_monday);
                         let date_string = datum.format(INI_DATE_FORMAT).to_string();
                         let date_str = date_string.as_str();
                         let ini_path = Path::new(INI_FILE_PATH);
@@ -157,18 +176,18 @@ fn main() -> eframe::Result {
                                     .to_owned();
                             }
                         }
-                        week_data = week_string;
+                        self.week_data = week_string;
                     }
-                    selected_monday = datum;
+                    self.selected_monday = datum;
                 }
                 if right_button.clicked() {
-                    week::save_if_needed(&week_data, &datum);
+                    week::save_if_needed(&self.week_data, &datum);
                     datum = datum
                         .checked_add_days(DAYS_IN_WEEK)
                         .to_owned()
                         .expect("Adding 7 days failed.");
-                    selected_monday = datum;
-                    week_data = week::load_week(&datum);
+                    self.selected_monday = datum;
+                    self.week_data = week::load_week(&datum);
                 }
             });
 
@@ -182,11 +201,11 @@ fn main() -> eframe::Result {
                 for (i, day) in DAY_LONG.iter().enumerate() {
                     ui.label(*day);
                     ui.add(
-                        TextEdit::multiline(&mut week_data[i][0])
+                        TextEdit::multiline(&mut self.week_data[i][0])
                             .min_size([EDIT_WIDTH, 1.0].into()),
                     );
                     ui.add(
-                        TextEdit::multiline(&mut week_data[i][1])
+                        TextEdit::multiline(&mut self.week_data[i][1])
                             .min_size([EDIT_WIDTH, 1.0].into()),
                     );
                     ui.end_row();
@@ -194,43 +213,43 @@ fn main() -> eframe::Result {
 
                 ui.label("");
                 if ui.button("Load").clicked() {
-                    week_data = week::load_week(&datum);
+                    self.week_data = week::load_week(&datum);
                 }
 
                 if ui.button("Save").clicked() {
-                    week::save_if_needed(&week_data, &datum);
+                    week::save_if_needed(&self.week_data, &datum);
                 }
             });
         });
+    }
 
-        // if ctx.input(|i| i.viewport().close_requested()) {
-        //     if self.allowed_to_close {
-        //         // do nothing - we will close
-        //     } else {
-        //         ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
-        //         self.show_confirmation_dialog = true;
-        //     }
-        // }
-        //
-        // if self.show_confirmation_dialog {
-        //     egui::Window::new("Do you want to quit?")
-        //         .pivot(Align2::CENTER_CENTER) // .curent_pos(pos)
-        //         .collapsible(false)
-        //         .resizable(false)
-        //         .show(ctx, |ui| {
-        //             ui.horizontal(|ui| {
-        //                 if ui.button("No").clicked() {
-        //                     self.show_confirmation_dialog = false;
-        //                     self.allowed_to_close = false;
-        //                 }
-        //
-        //                 if ui.button("Yes").clicked() {
-        //                     self.show_confirmation_dialog = false;
-        //                     self.allowed_to_close = true;
-        //                     ui.ctx().send_viewport_cmd(egui::ViewportCommand::Close);
-        //                 }
-        //             });
-        //         });
-        // }
-    })
+    // if ctx.input(|i| i.viewport().close_requested()) {
+    //     if self.allowed_to_close {
+    //         // do nothing - we will close
+    //     } else {
+    //         ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
+    //         self.show_confirmation_dialog = true;
+    //     }
+    // }
+    //
+    // if self.show_confirmation_dialog {
+    //     egui::Window::new("Do you want to quit?")
+    //         .pivot(Align2::CENTER_CENTER) // .curent_pos(pos)
+    //         .collapsible(false)
+    //         .resizable(false)
+    //         .show(ctx, |ui| {
+    //             ui.horizontal(|ui| {
+    //                 if ui.button("No").clicked() {
+    //                     self.show_confirmation_dialog = false;
+    //                     self.allowed_to_close = false;
+    //                 }
+    //
+    //                 if ui.button("Yes").clicked() {
+    //                     self.show_confirmation_dialog = false;
+    //                     self.allowed_to_close = true;
+    //                     ui.ctx().send_viewport_cmd(egui::ViewportCommand::Close);
+    //                 }
+    //             });
+    //         });
+    // }
 }
