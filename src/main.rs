@@ -2,14 +2,12 @@
 #![allow(rustdoc::missing_crate_level_docs)] // it's unfinished ...
 
 use chrono::{Datelike, Days, Local, NaiveDate};
-use eframe::egui::{Align2, Visuals};
-use eframe::egui::{Context, TextEdit};
-use eframe::{Frame, egui};
+use eframe::egui;
+use eframe::egui::TextEdit;
+use eframe::egui::{Vec2, Visuals};
 use egui_extras::DatePickerButton;
 use log::info;
 
-use eframe::egui::FontFamily::Proportional;
-use eframe::egui::TextStyle::{Body, Button, Heading, Monospace, Small};
 use ini::Ini;
 use std::path::Path;
 use week::WeekData;
@@ -20,15 +18,14 @@ const EDIT_WIDTH: f32 = 200.0;
 const TITLE: &str = "Menu → PDF";
 const TIME_LONG: [&str; 2] = ["Mittag", "Abend"];
 const TIME_SHORT: [&str; 2] = ["mi", "ab"];
-// const DAY_LONG: [&str; 7] = [
-const DAY_LONG: [&str; 2] = [
+const DAY_LONG: [&str; 7] = [
     "Montag",
     "Dienstag",
-    // "Mittwoch",
-    // "Donnerstag",
-    // "Freitag",
-    // "Samstag",
-    // "Sonntag",
+    "Mittwoch",
+    "Donnerstag",
+    "Freitag",
+    "Samstag",
+    "Sonntag",
 ];
 const DAY_SHORT: [&str; 7] = ["mo", "di", "mi", "do", "fr", "sa", "so"];
 const _DEMO_INI_FILE_PATH: &str = "demo_menu.ini";
@@ -47,89 +44,59 @@ fn get_closest_last_monday(datum: &mut NaiveDate) -> NaiveDate {
 
 fn main() -> eframe::Result {
     env_logger::init(); // Log to stderr (if you run with `RUST_LOG=debug`).
-    let mut app = MenuPdfApp::new();
+    let app = MenuPdfApp::new();
 
-    // // Compute window size.
-    // let ctx = egui::Context::default();
-    //
-    // let _ = ctx.run(egui::RawInput::default(), |_| {});
-    // app.render(&ctx);
-    // let size = ctx.used_size();
+    let options = eframe::NativeOptions {
+        viewport: egui::ViewportBuilder::default().with_resizable(false),
+        ..Default::default()
+    };
 
-    // let options = eframe::NativeOptions {
-    //     viewport: egui::ViewportBuilder::default()
-    //         .with_resizable(false)
-    //         .with_inner_size(size),
-    //     ..Default::default()
-    // };
+    eframe::run_native(TITLE, options, Box::new(|_cc| Ok(Box::new(app))))
+}
 
-    eframe::run_native(
-        TITLE,
-        // options,
-        eframe::NativeOptions::default(),
-        // Box::new(|cc| Ok(Box::new(MenuPdfApp::new(cc)))),
-        Box::new(|_cc| Ok(Box::new(app))),
-    )
+#[derive(Default)]
+enum Stage {
+    #[default]
+    PreRender,
+    FirstRender,
+    FirstResize,
+    Initialized,
 }
 
 #[derive(Default)]
 struct MenuPdfApp {
+    _render_stage: Stage,
+    _pre_render_cycles: isize,
+    _initial_size: Option<Vec2>,
     selected_monday: NaiveDate,
     week_data: WeekData,
-    _first_render: bool,
 }
 
 impl MenuPdfApp {
-    // pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
     pub fn new() -> Self {
         let mut datum = Local::now().date_naive();
         datum = get_closest_last_monday(&mut datum);
 
         Self {
+            _render_stage: Stage::PreRender,
+            _pre_render_cycles: 2,
+            _initial_size: None,
             selected_monday: datum,
             week_data: week::load_week(&datum),
-            _first_render: true,
         }
     }
 }
 
-// TODO: Size window to fit content -> https://github.com/emilk/egui/discussions/2858
-//       Origin of 2858   -> https://github.com/emilk/egui/discussions/4329
-//       Alternative?     -> https://github.com/emilk/egui/discussions/465
-//       Similar problem? -> https://github.com/emilk/egui/discussions/949
-
 impl MenuPdfApp {
     fn pre_render(&mut self, ctx: &eframe::egui::Context) {
-        // // From: https://github.com/emilk/egui/discussions/1627
-        // ctx.set_visuals(Visuals::light());
-        // ctx.set_pixels_per_point(2.0);
-
         egui::Window::new("pre_render")
             .title_bar(false)
             .fixed_pos((0.0, 0.0))
             .show(ctx, |ui| {
                 self.render(ui);
-                // ui.allocate_space(ui.available_size());
             });
     }
     fn render(&mut self, ui: &mut egui::Ui) {
-    // fn render(&mut self, ctx: &egui::Ui) {
-        // egui::CentralPanel::default().show(ctx, |ui| {
-        // egui::Area::new(egui::Id::new("new-area"))
-        //     .fixed_pos((0.0, 0.0))
-        //     .show(ctx, |ui| {
-
-                // let mut style = (*ctx.style()).clone();
-            // style.text_styles = [
-            //     (Heading, FontId::new(30.0, Proportional)),
-            //     (Body, FontId::new(18.0, Proportional)),
-            //     (Monospace, FontId::new(16.0, Proportional)),
-            //     (Button, FontId::new(16.0, Proportional)),
-            //     (Small, FontId::new(10.0, Proportional)),
-            // ]
-            // .into();
-            // ctx.set_style(style);
-
         let mut datum = self.selected_monday;
         ui.horizontal(|ui| {
             ui.label("Datum: ");
@@ -221,34 +188,43 @@ impl MenuPdfApp {
                 week::save_if_needed(&self.week_data, &datum);
             }
         });
-
-            // From: https://github.com/emilk/egui/blob/main/examples/confirm_exit/src/main.rs
-            // if ctx.input(|i| i.viewport().close_requested()) {
-            //     week::save_if_needed(&self.week_data, &datum);
-            // }
-        // });
     }
 }
 
 impl eframe::App for MenuPdfApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        // From: https://github.com/emilk/egui/discussions/1627
-        // ctx.set_visuals(Visuals::light());
-        // ctx.set_pixels_per_point(2.0);
-        // self.render(ctx)
-        if self._first_render {
-            self.pre_render(ctx);
-            self._first_render = false;
-            let window_size = ctx.used_size();
-            ctx.send_viewport_cmd(egui::ViewportCommand::InnerSize(window_size));
-        } else {
-            egui::CentralPanel::default().show(ctx, |ui| {
-            // egui::Window::new("pre_render")
-            //     .title_bar(false)
-            //     .fixed_pos((0.0, 0.0))
-            //     .show(ctx, |ui| {
-                self.render(ui);
-            });
+        ctx.set_visuals(Visuals::light());
+        match self._render_stage {
+            Stage::PreRender => {
+                self.pre_render(ctx);
+                self._initial_size = Some(ctx.used_size());
+                self._pre_render_cycles -= 1;
+                if self._pre_render_cycles <= 0 {
+                    self._render_stage = Stage::FirstRender;
+                }
+            }
+            Stage::FirstRender => {
+                egui::CentralPanel::default().show(ctx, |ui| {
+                    self.render(ui);
+                });
+                self._render_stage = Stage::FirstResize;
+            }
+            Stage::FirstResize => {
+                if let Some(size) = self._initial_size {
+                    ctx.send_viewport_cmd(egui::ViewportCommand::InnerSize(size));
+                    self._render_stage = Stage::Initialized;
+                }
+            }
+            Stage::Initialized => {
+                egui::CentralPanel::default().show(ctx, |ui| {
+                    self.render(ui);
+                });
+            }
+        }
+
+        // From: https://github.com/emilk/egui/blob/main/examples/confirm_exit/src/main.rs
+        if ctx.input(|i| i.viewport().close_requested()) {
+            week::save_if_needed(&self.week_data, &self.selected_monday);
         }
     }
 }
