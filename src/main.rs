@@ -54,20 +54,15 @@ fn main() -> eframe::Result {
     eframe::run_native(TITLE, options, Box::new(|_cc| Ok(Box::new(app))))
 }
 
-#[derive(Default)]
 enum Stage {
-    #[default]
-    PreRender,
-    FirstRender,
-    FirstResize,
-    Initialized,
+    PreRender(isize),
+    FirstRender(Vec2),
+    FirstResize(Vec2),
+    Initialized(Vec2),
 }
 
-#[derive(Default)]
 struct MenuPdfApp {
     _render_stage: Stage,
-    _pre_render_cycles: isize,
-    _initial_size: Option<Vec2>,
     selected_monday: NaiveDate,
     week_data: WeekData,
 }
@@ -78,9 +73,7 @@ impl MenuPdfApp {
         datum = get_closest_last_monday(&mut datum);
 
         Self {
-            _render_stage: Stage::PreRender,
-            _pre_render_cycles: 2,
-            _initial_size: None,
+            _render_stage: Stage::PreRender(2_isize),
             selected_monday: datum,
             week_data: week::load_week(&datum),
         }
@@ -195,32 +188,31 @@ impl eframe::App for MenuPdfApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         ctx.set_visuals(Visuals::light());
         match self._render_stage {
-            Stage::PreRender => {
+            Stage::PreRender(mut pre_render_cycle) => {
                 self.pre_render(ctx);
-                self._initial_size = Some(ctx.used_size());
-                self._pre_render_cycles -= 1;
-                if self._pre_render_cycles <= 0 {
-                    self._render_stage = Stage::FirstRender;
+                pre_render_cycle -= 1;
+                if pre_render_cycle > 0 {
+                    self._render_stage = Stage::PreRender(pre_render_cycle)
+                } else {
+                    self._render_stage = Stage::FirstRender(ctx.used_size());
                 }
             }
-            Stage::FirstRender => {
+            Stage::FirstRender(size) => {
                 egui::CentralPanel::default().show(ctx, |ui| {
                     self.render(ui);
                 });
-                self._render_stage = Stage::FirstResize;
+                self._render_stage = Stage::FirstResize(size)
             }
-            Stage::FirstResize => {
-                if let Some(size) = self._initial_size {
-                    ctx.send_viewport_cmd(egui::ViewportCommand::InnerSize(size));
-                    self._render_stage = Stage::Initialized;
-                }
+            Stage::FirstResize(size) => {
+                ctx.send_viewport_cmd(egui::ViewportCommand::InnerSize(size));
+                self._render_stage = Stage::Initialized(size)
             }
-            Stage::Initialized => {
+            Stage::Initialized(_size) => {
                 egui::CentralPanel::default().show(ctx, |ui| {
                     self.render(ui);
                 });
             }
-        }
+        };
 
         // From: https://github.com/emilk/egui/blob/main/examples/confirm_exit/src/main.rs
         if ctx.input(|i| i.viewport().close_requested()) {
