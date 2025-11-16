@@ -12,6 +12,17 @@ use ini::Ini;
 use std::path::Path;
 use week::WeekData;
 
+use derive_typst_intoval::{IntoDict, IntoValue};
+use std::fs;
+use typst::foundations::{Bytes, Dict, IntoValue};
+use typst_as_lib::TypstEngine;
+
+static TEMPLATE_FILE: &str = include_str!("../res/wochenmenu.md");
+static FONT_H: &[u8] = include_bytes!("../res/Helvetica.ttf");
+static FONT_H_B: &[u8] = include_bytes!("../res/Helvetica-Bold.ttf");
+static OUTPUT: &str = "./output.pdf";
+static IMAGE: &[u8] = include_bytes!("../res/Titel.png");
+
 mod week;
 
 const EDIT_WIDTH: f32 = 200.0;
@@ -42,7 +53,11 @@ fn get_closest_last_monday(datum: &mut NaiveDate) -> NaiveDate {
         .expect("Calculating closest past monday failed")
 }
 
-fn main() -> eframe::Result {
+// todo: integrate typst-as-library, https://github.com/tfachmann/typst-as-library?tab=readme-ov-file
+// todo:    -> Example, https://github.com/tfachmann/typst-as-library/blob/main/examples/native/src/main.rs
+
+// fn main() -> eframe::Result {
+fn main() {
     env_logger::init(); // Log to stderr (if you run with `RUST_LOG=debug`).
     let app = MenuPdfApp::new();
 
@@ -51,7 +66,9 @@ fn main() -> eframe::Result {
         ..Default::default()
     };
 
-    eframe::run_native(TITLE, options, Box::new(|_cc| Ok(Box::new(app))))
+    write_pdf();
+    open::that(OUTPUT).expect("Error opening PDF");
+    // eframe::run_native(TITLE, options, Box::new(|_cc| Ok(Box::new(app))))
 }
 
 enum Stage {
@@ -176,12 +193,36 @@ impl MenuPdfApp {
             if ui.button("Load").clicked() {
                 self.week_data = week::load_week(&datum);
             }
-
             if ui.button("Save").clicked() {
                 week::save_if_needed(&self.week_data, &datum);
             }
+            ui.end_row();
+
+            ui.label("");
+            if ui.button("Drucken").clicked() {
+                write_pdf();
+            }
         });
     }
+}
+
+fn write_pdf() {
+    let template = TypstEngine::builder()
+        .with_static_file_resolver([("./Titel.png", IMAGE)])
+        .main_file(TEMPLATE_FILE)
+        .fonts([FONT_H, FONT_H_B])
+        .build();
+
+    // Run it
+    let doc = template
+        .compile()
+        .output
+        .expect("typst::compile() returned an error!");
+
+    // Create pdf
+    let options = Default::default();
+    let pdf = typst_pdf::pdf(&doc, &options).expect("Could not generate pdf.");
+    fs::write(OUTPUT, pdf).expect("Could not write pdf.");
 }
 
 impl eframe::App for MenuPdfApp {

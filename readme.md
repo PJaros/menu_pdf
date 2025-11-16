@@ -5,10 +5,13 @@ Generates menu pdf for a weekly overview what is going to be cooked for lunch an
 ## Current state
 
 This project is still work in progress. And important features are still missing.
-Currently it shows a egui window with a calendar selector and several multiline editors.
+Currently, it shows a egui window with a calendar selector and several multiline editors.
 Data is loaded from the demo_menu-ini file.
 
-Todo:
- - Reading and writing to INI files is tested. But currently only a demo-file read is implemented.
- - There is a typst prototype ready to be included. Typst will need to added to this project with typst-as-lib or typst
-   will need to ship with a compiled typst. 
+# Dependencies
+ - Uses https://github.com/typst/typst to design and create the PDF
+ - Uses https://github.com/Relacibo/typst-as-lib to integrate Typst into this application
+ - Uses https://github.com/Byron/open-rs to open the generated PDF
+
+# Todo
+ - Transfer data to typst document
