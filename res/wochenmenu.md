@@ -1,3 +1,5 @@
+#import sys: inputs
+
 #set page(
   paper: "a4",
   margin: (
@@ -40,7 +42,6 @@
   image("Titel.png", width: 80%),
 )
 
-
 /*#let a = table.cell(
   fill: green.lighten(60%),
 )[A]
@@ -48,46 +49,46 @@
   fill: aqua.lighten(60%),
 )[B]*/
 
+#let content = inputs
+
 #table(
   columns: (33%, 33%, 33%),
   [MITTAGESSEN], [], [ABENDESSEN],
 
-  [Steinpilzrisotto mit Randengemüse], 
-  [MONTAG\ 
-  15. September], 
-  [Cafe Complet],
+  [#content.mo_mi], 
+  [#upper[#content.mo_day]\
+  #content.mo_date], 
+  [#content.mo_ab],
   
-  [Trutenpicatta Selleriepicatta Tomatenspaghetti], 
-  [DIENSTAG\ 
-  16. September], 
-  [Eierbrötli],
+  [#content.di_mi], 
+  [#upper[#content.di_day]\
+  #content.di_date], 
+  [#content.di_ab],
   
-  [Gschwellti mit Käse und Zibu], 
-  [MITTWOCH\ 
-  17. September], 
-  [Cafe complet],
+  [#content.mi_mi], 
+  [#upper[#content.mi_day]\
+  #content.mi_date], 
+  [#content.mi_ab],
   
-  [Kartoffelstock mit
-Hackbraten oder
-Linsenhackbraten], 
-  [DONNERSTAG\ 
-  18. September], 
-  [Pizza],
+  [#content.do_mi], 
+  [#upper[#content.do_day]\
+  #content.do_date], 
+  [#content.do_ab],
   
-  [Käsfladen],
-  [FREITAG\
-  19. September],
-  [Wienerli oder Haloumi im Schlafrock],
+  [#content.fr_mi],
+  [#upper[#content.fr_day]\
+  #content.fr_date],
+  [#content.fr_ab],
   
-  [Braten mit Nudeln],
-  [SAMSTAG\
-  20. September],
-  [Cafe complet],
+  [#content.sa_mi],
+  [#upper[#content.sa_day]\
+  #content.sa_date],
+  [#content.sa_ab],
   
-  [Kalbsgeschnetzeltes mit Rösti],
-  [SONNTAG\
-  21. September],
-  [Fruchtfladen],
+  [#content.so_mi],
+  [#upper[#content.so_day]\
+  #content.so_date],
+  [#content.so_ab],
 )
 
 Zur Vorspeise gehören täglich Suppe und Salat, beim Hauptgang Saisongemüse und ein Dessert dazu

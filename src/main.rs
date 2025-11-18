@@ -3,7 +3,7 @@
 
 use chrono::{Datelike, Days, Local, NaiveDate};
 use eframe::egui;
-use eframe::egui::TextEdit;
+use eframe::egui::{TextBuffer, TextEdit};
 use eframe::egui::{Vec2, Visuals};
 use egui_extras::DatePickerButton;
 use log::info;
@@ -16,6 +16,7 @@ use derive_typst_intoval::{IntoDict, IntoValue};
 use std::fs;
 use typst::foundations::{Bytes, Dict, IntoValue};
 use typst_as_lib::TypstEngine;
+use crate::week::{load_week,load_demo_week};
 
 static TEMPLATE_FILE: &str = include_str!("../res/wochenmenu.md");
 static FONT_H: &[u8] = include_bytes!("../res/Helvetica.ttf");
@@ -39,9 +40,11 @@ const DAY_LONG: [&str; 7] = [
     "Sonntag",
 ];
 const DAY_SHORT: [&str; 7] = ["mo", "di", "mi", "do", "fr", "sa", "so"];
-const _DEMO_INI_FILE_PATH: &str = "demo_menu.ini";
+const DEMO_INI_FILE_PATH: &str = "./test_res/demo_menu.ini";
+const DEMO_INI_SECTION: &str = "Week";
 const INI_FILE_PATH: &str = "menu.ini";
 const UI_DATE_FORMAT: &str = "%e. %b %Y";
+const PDF_DATE_FORMAT: &str = "%e. %B";
 const INI_DATE_FORMAT: &str = "%Y-%m-%d";
 const DAYS_IN_WEEK: Days = Days::new(7);
 
@@ -53,11 +56,8 @@ fn get_closest_last_monday(datum: &mut NaiveDate) -> NaiveDate {
         .expect("Calculating closest past monday failed")
 }
 
-// todo: integrate typst-as-library, https://github.com/tfachmann/typst-as-library?tab=readme-ov-file
-// todo:    -> Example, https://github.com/tfachmann/typst-as-library/blob/main/examples/native/src/main.rs
-
-// fn main() -> eframe::Result {
-fn main() {
+fn main() -> eframe::Result {
+// fn main() {
     env_logger::init(); // Log to stderr (if you run with `RUST_LOG=debug`).
     let app = MenuPdfApp::new();
 
@@ -66,9 +66,10 @@ fn main() {
         ..Default::default()
     };
 
-    write_pdf();
-    open::that(OUTPUT).expect("Error opening PDF");
-    // eframe::run_native(TITLE, options, Box::new(|_cc| Ok(Box::new(app))))
+    // let demo_week_data = load_demo_week(&app.selected_monday, DEMO_INI_FILE_PATH);
+    // write_pdf(&demo_week_data, &app.selected_monday);
+    // open::that(OUTPUT).expect("Error opening PDF");
+    eframe::run_native(TITLE, options, Box::new(|_cc| Ok(Box::new(app))))
 }
 
 enum Stage {
@@ -200,13 +201,26 @@ impl MenuPdfApp {
 
             ui.label("");
             if ui.button("Drucken").clicked() {
-                write_pdf();
+                write_pdf(&self.week_data, &datum);
+                open::that(OUTPUT).expect("Error opening PDF");
             }
         });
     }
 }
 
-fn write_pdf() {
+fn write_pdf(week_data: &WeekData, datum: &NaiveDate) {
+    let mut date = datum.clone();
+    let mut dict = Dict::new();
+    for (y, day) in DAY_SHORT.iter().enumerate() {
+        dict.insert(format!("{day}_day").into(), DAY_LONG[y].into_value());
+        let datum_str = &date.format(PDF_DATE_FORMAT).to_string();
+        dict.insert(format!("{day}_date").into(), datum_str.to_owned().into_value());
+        for (x, time) in TIME_SHORT.iter().enumerate() {
+            let key = format!("{day}_{time}");
+            dict.insert(key.into(), week_data[y][x].trim().into_value());
+        }
+        date = date + Days::new(1);
+    }
     let template = TypstEngine::builder()
         .with_static_file_resolver([("./Titel.png", IMAGE)])
         .main_file(TEMPLATE_FILE)
@@ -215,7 +229,7 @@ fn write_pdf() {
 
     // Run it
     let doc = template
-        .compile()
+        .compile_with_input(dict)
         .output
         .expect("typst::compile() returned an error!");
 

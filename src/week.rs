@@ -1,4 +1,4 @@
-use crate::{DAY_SHORT, INI_DATE_FORMAT, INI_FILE_PATH, TIME_SHORT};
+use crate::{DAY_SHORT, DEMO_INI_SECTION, INI_DATE_FORMAT, INI_FILE_PATH, TIME_SHORT};
 use chrono::NaiveDate;
 use ini::Ini;
 use log::info;
@@ -34,6 +34,27 @@ pub fn load_week(datum: &NaiveDate) -> WeekData {
             let key = format!("{day}_{time}");
             week_string[y][x] = conf
                 .get_from_or(Some(date_string.as_str()), key.as_str(), "")
+                .to_owned();
+        }
+    }
+    info!("Loading {}", date_string);
+    week_string
+}
+
+pub fn load_demo_week(datum: &NaiveDate, path: &str) -> WeekData {
+    let date_string = datum.format(INI_DATE_FORMAT).to_string();
+    let ini_path = Path::new(path);
+    let conf: Ini = match ini_path.exists() {
+        true => Ini::load_from_file(ini_path).expect("Error loading ini file"),
+        false => Ini::new(),
+    };
+
+    let mut week_string = create_empty_week();
+    for (y, day) in DAY_SHORT.iter().enumerate() {
+        for (x, time) in TIME_SHORT.iter().enumerate() {
+            let key = format!("{day}_{time}");
+            week_string[y][x] = conf
+                .get_from_or(Some(DEMO_INI_SECTION), key.as_str(), "")
                 .to_owned();
         }
     }
