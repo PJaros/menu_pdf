@@ -12,11 +12,11 @@ use ini::Ini;
 use std::path::Path;
 use week::WeekData;
 
+use crate::week::{load_demo_week, load_week};
 use derive_typst_intoval::{IntoDict, IntoValue};
 use std::fs;
 use typst::foundations::{Bytes, Dict, IntoValue};
 use typst_as_lib::TypstEngine;
-use crate::week::{load_week,load_demo_week};
 
 static TEMPLATE_FILE: &str = include_str!("../res/wochenmenu.md");
 static FONT_H: &[u8] = include_bytes!("../res/Helvetica.ttf");
@@ -214,7 +214,10 @@ fn write_pdf(week_data: &WeekData, datum: &NaiveDate) {
     for (y, day) in DAY_SHORT.iter().enumerate() {
         dict.insert(format!("{day}_day").into(), DAY_LONG[y].into_value());
         let datum_str = &date.format(PDF_DATE_FORMAT).to_string();
-        dict.insert(format!("{day}_date").into(), datum_str.to_owned().into_value());
+        dict.insert(
+            format!("{day}_date").into(),
+            datum_str.to_owned().into_value(),
+        );
         for (x, time) in TIME_SHORT.iter().enumerate() {
             let key = format!("{day}_{time}");
             dict.insert(key.into(), week_data[y][x].trim().into_value());
