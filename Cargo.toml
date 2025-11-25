@@ -8,8 +8,8 @@ publish = false
 
 [dependencies]
 # GUI library
-eframe = { version = "0.33.2", features = ["default"] }
-egui_extras = { version = "0.33.2", features = ["datepicker"] }
+eframe = { version = "0.33.0", features = ["default"] }
+egui_extras = { version = "0.33.0", features = ["datepicker"] }
 env_logger = { version = "0.11.8", default-features = false, features = ["auto-color", "humantime"] }
 chrono = "0.4.42"
 rust-ini = "0.21.3"
@@ -22,7 +22,7 @@ typst-pdf = "0.14.0"
 typst = "0.14.0"
 
 # Open file (in this case the generated PDF) with the OS specified tool
-open = "5.3.3"
+open = "5.3.2"
 
 # Commandline parsers
 clap = { version = "4.5.53", features = ["derive"] }
