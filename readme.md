@@ -12,6 +12,9 @@ Data is loaded from the demo_menu-ini file.
  - Uses https://github.com/typst/typst to design and create the PDF
  - Uses https://github.com/Relacibo/typst-as-lib to integrate Typst into this application
  - Uses https://github.com/Byron/open-rs to open the generated PDF
+ - Uses https://github.com/clap-rs/clap to interpret command-line options
 
 # Todo
- - Transfer data to typst document
+ - Automatically save every 10 seconds, remove load and save
+ - Create release script for windows releases
+ - Add further typst templates

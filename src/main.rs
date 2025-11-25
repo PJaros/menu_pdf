@@ -3,7 +3,7 @@
 
 use chrono::{Datelike, Days, Local, NaiveDate};
 use eframe::egui;
-use eframe::egui::{TextBuffer, TextEdit};
+use eframe::egui::TextEdit;
 use eframe::egui::{Vec2, Visuals};
 use egui_extras::DatePickerButton;
 use log::info;
@@ -12,11 +12,11 @@ use ini::Ini;
 use std::path::Path;
 use week::WeekData;
 
-use crate::week::{load_demo_week, load_week};
-use derive_typst_intoval::{IntoDict, IntoValue};
 use std::fs;
-use typst::foundations::{Bytes, Dict, IntoValue};
+use typst::foundations::{Dict, IntoValue};
 use typst_as_lib::TypstEngine;
+
+use clap::Parser;
 
 static TEMPLATE_FILE: &str = include_str!("../res/wochenmenu.md");
 static FONT_H: &[u8] = include_bytes!("../res/Helvetica.ttf");
@@ -47,6 +47,16 @@ const UI_DATE_FORMAT: &str = "%e. %b %Y";
 const PDF_DATE_FORMAT: &str = "%e. %B";
 const INI_DATE_FORMAT: &str = "%Y-%m-%d";
 const DAYS_IN_WEEK: Days = Days::new(7);
+const ONE_DAY: Days = Days::new(1);
+
+#[derive(Parser)]
+#[command(author, version, about, long_about = None)]
+struct Args {
+    #[arg(short, long, default_value_t = 1.0)]
+    zoom: f32,
+    #[arg(short, long, default_value_t = false)]
+    demo_pdf: bool,
+}
 
 fn get_closest_last_monday(datum: &mut NaiveDate) -> NaiveDate {
     let day: u64 = (datum.weekday().number_from_monday() - 1).into();
@@ -56,20 +66,27 @@ fn get_closest_last_monday(datum: &mut NaiveDate) -> NaiveDate {
         .expect("Calculating closest past monday failed")
 }
 
-fn main() -> eframe::Result {
-// fn main() {
+// fn main() -> eframe::Result {
+fn main() {
+    let args = Args::parse();
+
     env_logger::init(); // Log to stderr (if you run with `RUST_LOG=debug`).
-    let app = MenuPdfApp::new();
+    let app = MenuPdfApp::new(args.zoom);
+    match args.demo_pdf {
+        true => {
+            let demo_week_data = week::load_demo_week(&app.selected_monday, DEMO_INI_FILE_PATH);
+            write_pdf(&demo_week_data, &app.selected_monday);
+            open::that(OUTPUT).expect("Error opening PDF");
+        }
+        false => {
+            let options = eframe::NativeOptions {
+                viewport: egui::ViewportBuilder::default().with_resizable(false),
+                ..Default::default()
+            };
 
-    let options = eframe::NativeOptions {
-        viewport: egui::ViewportBuilder::default().with_resizable(false),
-        ..Default::default()
-    };
-
-    // let demo_week_data = load_demo_week(&app.selected_monday, DEMO_INI_FILE_PATH);
-    // write_pdf(&demo_week_data, &app.selected_monday);
-    // open::that(OUTPUT).expect("Error opening PDF");
-    eframe::run_native(TITLE, options, Box::new(|_cc| Ok(Box::new(app))))
+            let _ = eframe::run_native(TITLE, options, Box::new(|_cc| Ok(Box::new(app))));
+        }
+    }
 }
 
 enum Stage {
@@ -82,17 +99,22 @@ enum Stage {
 struct MenuPdfApp {
     _render_stage: Stage,
     selected_monday: NaiveDate,
+    zoom: Option<f32>,
     week_data: WeekData,
 }
 
 impl MenuPdfApp {
-    pub fn new() -> Self {
+    pub fn new(zoom: f32) -> Self {
         let mut datum = Local::now().date_naive();
         datum = get_closest_last_monday(&mut datum);
 
         Self {
             _render_stage: Stage::PreRender(2_isize),
             selected_monday: datum,
+            zoom: match zoom {
+                1.0 => None,
+                _ => Some(zoom),
+            },
             week_data: week::load_week(&datum),
         }
     }
@@ -201,6 +223,7 @@ impl MenuPdfApp {
 
             ui.label("");
             if ui.button("Drucken").clicked() {
+                week::save_if_needed(&self.week_data, &datum);
                 write_pdf(&self.week_data, &datum);
                 open::that(OUTPUT).expect("Error opening PDF");
             }
@@ -209,7 +232,7 @@ impl MenuPdfApp {
 }
 
 fn write_pdf(week_data: &WeekData, datum: &NaiveDate) {
-    let mut date = datum.clone();
+    let mut date = *datum;
     let mut dict = Dict::new();
     for (y, day) in DAY_SHORT.iter().enumerate() {
         dict.insert(format!("{day}_day").into(), DAY_LONG[y].into_value());
@@ -222,7 +245,7 @@ fn write_pdf(week_data: &WeekData, datum: &NaiveDate) {
             let key = format!("{day}_{time}");
             dict.insert(key.into(), week_data[y][x].trim().into_value());
         }
-        date = date + Days::new(1);
+        date = date + ONE_DAY;
     }
     let template = TypstEngine::builder()
         .with_static_file_resolver([("./Titel.png", IMAGE)])
@@ -245,6 +268,7 @@ fn write_pdf(week_data: &WeekData, datum: &NaiveDate) {
 impl eframe::App for MenuPdfApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         ctx.set_visuals(Visuals::light());
+        if let Some(x) = self.zoom { ctx.set_zoom_factor(x) }
         match self._render_stage {
             Stage::PreRender(mut pre_render_cycle) => {
                 self.pre_render(ctx);
