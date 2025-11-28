@@ -4,9 +4,13 @@ Generates menu pdf for a weekly overview what is going to be cooked for lunch an
 
 ## Current state
 
-This project is still work in progress. And important features are still missing.
+This project is almost feature complete.
+
 Currently, it shows a egui window with a calendar selector and several multiline editors.
-Data is loaded from the demo_menu-ini file.
+Data is loaded and saved from the menu.ini file.
+
+It has been developed and tested under Linux. It has been (briefly) tested on Windows 11 and works. But it won't work on
+a virtualized Windows 11 as egui doesn't support that.
 
 # Dependencies
  - Uses https://github.com/typst/typst to design and create the PDF
@@ -15,6 +19,4 @@ Data is loaded from the demo_menu-ini file.
  - Uses https://github.com/clap-rs/clap to interpret command-line options
 
 # Todo
- - Automatically save every 10 seconds, remove load and save
- - Create release script for windows releases
  - Add further typst templates
