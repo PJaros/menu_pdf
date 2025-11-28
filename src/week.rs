@@ -58,11 +58,11 @@ pub fn load_demo_week(datum: &NaiveDate, path: &str) -> WeekData {
                 .to_owned();
         }
     }
-    info!("Loading {}", date_string);
+    info!("Loading demo {}", date_string);
     week_string
 }
 
-fn save_week(week_data: &WeekData, date_str: &str) {
+pub fn save_week(week_data: &WeekData, date_str: &str) {
     let ini_path = Path::new(INI_FILE_PATH);
     let mut conf: Ini = match ini_path.exists() {
         true => Ini::load_from_file(ini_path).expect("Error loading ini file"),
@@ -79,14 +79,6 @@ fn save_week(week_data: &WeekData, date_str: &str) {
     info!("Saving {}", date_str);
     conf.write_to_file(INI_FILE_PATH)
         .expect("Error writing ini file");
-}
-
-pub fn save_if_needed(week_data: &WeekData, datum: &NaiveDate) {
-    let date_string = datum.format(INI_DATE_FORMAT).to_string();
-    if !is_equal_to_saved(week_data, datum) {
-        info!("Data changed, saving data");
-        save_week(week_data, date_string.as_str());
-    }
 }
 
 pub fn is_equal_to_saved(week_data: &WeekData, datum: &NaiveDate) -> bool {

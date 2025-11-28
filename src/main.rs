@@ -13,6 +13,7 @@ use std::path::Path;
 use week::WeekData;
 
 use std::fs;
+use std::time::{Instant, Duration};
 use typst::foundations::{Dict, IntoValue};
 use typst_as_lib::TypstEngine;
 
@@ -101,6 +102,7 @@ struct MenuPdfApp {
     selected_monday: NaiveDate,
     zoom: Option<f32>,
     week_data: WeekData,
+    last_save: Instant,
 }
 
 impl MenuPdfApp {
@@ -116,6 +118,7 @@ impl MenuPdfApp {
                 _ => Some(zoom),
             },
             week_data: week::load_week(&datum),
+            last_save: Instant::now(),
         }
     }
 }
@@ -139,7 +142,8 @@ impl MenuPdfApp {
             let right_button = ui.button(">");
 
             if left_button.clicked() {
-                week::save_if_needed(&self.week_data, &datum);
+                self.save_if_needed(&datum);
+                self.last_save = Instant::now();
                 datum = datum
                     .checked_sub_days(DAYS_IN_WEEK)
                     .to_owned()
@@ -159,7 +163,8 @@ impl MenuPdfApp {
                         "Different date. selected_monday: {}, datum: {}",
                         self.selected_monday, datum
                     );
-                    week::save_if_needed(&self.week_data, &self.selected_monday);
+                    self.save_if_needed(&self.selected_monday.clone());
+                    self.last_save = Instant::now();
                     let date_string = datum.format(INI_DATE_FORMAT).to_string();
                     let date_str = date_string.as_str();
                     let ini_path = Path::new(INI_FILE_PATH);
@@ -182,7 +187,7 @@ impl MenuPdfApp {
                 self.selected_monday = datum;
             }
             if right_button.clicked() {
-                week::save_if_needed(&self.week_data, &datum);
+                self.save_if_needed(&datum);
                 datum = datum
                     .checked_add_days(DAYS_IN_WEEK)
                     .to_owned()
@@ -211,23 +216,30 @@ impl MenuPdfApp {
                 );
                 ui.end_row();
             }
-
-            ui.label("");
-            if ui.button("Load").clicked() {
-                self.week_data = week::load_week(&datum);
-            }
-            if ui.button("Save").clicked() {
-                week::save_if_needed(&self.week_data, &datum);
-            }
-            ui.end_row();
-
+            
             ui.label("");
             if ui.button("Drucken").clicked() {
-                week::save_if_needed(&self.week_data, &datum);
+                self.save_if_needed(&datum);
                 write_pdf(&self.week_data, &datum);
                 open::that(OUTPUT).expect("Error opening PDF");
             }
         });
+    }
+
+    fn check_if_time_passed(&mut self) {
+        if (Instant::now() - self.last_save > Duration::from_secs(5)) {
+            info!("Time has passed. Checking if save is needed");
+            self.last_save = Instant::now();
+            self.save_if_needed(&self.selected_monday.clone());
+        }
+    }
+
+    fn save_if_needed(&mut self, datum: &NaiveDate) {
+        let date_string = datum.format(INI_DATE_FORMAT).to_string();
+        if !week::is_equal_to_saved(&self.week_data, datum) {
+            self.last_save = Instant::now();
+            week::save_week(&self.week_data, date_string.as_str());
+        }
     }
 }
 
@@ -292,13 +304,14 @@ impl eframe::App for MenuPdfApp {
             Stage::Initialized(_size) => {
                 egui::CentralPanel::default().show(ctx, |ui| {
                     self.render(ui);
+                    self.check_if_time_passed()
                 });
             }
         };
 
         // From: https://github.com/emilk/egui/blob/main/examples/confirm_exit/src/main.rs
         if ctx.input(|i| i.viewport().close_requested()) {
-            week::save_if_needed(&self.week_data, &self.selected_monday);
+            self.save_if_needed(&self.selected_monday.clone());
         }
     }
 }
