@@ -14,16 +14,19 @@ use week::WeekData;
 
 use std::fs;
 use std::time::{Instant, Duration};
-use typst::foundations::{Dict, IntoValue};
-use typst_as_lib::TypstEngine;
+use typst::foundations::{Bytes, Dict, IntoValue};
+use typst_as_lib::{TypstEngine, TypstTemplateMainFile};
 
 use clap::Parser;
+use typst::syntax::FileId;
+use typst_as_lib::conversions::{IntoBytes, IntoFileId};
 
-static TEMPLATE_FILE: &str = include_str!("../res/wochenmenu.md");
+static TEMPLATE_MAIN_FILE: &str = include_str!("../res/wochenmenu.md");
+static TEMPLATE_NOTES_FILE: &str = include_str!("../res/wochenmenu_notes.md");
 static FONT_H: &[u8] = include_bytes!("../res/Helvetica.ttf");
 static FONT_H_B: &[u8] = include_bytes!("../res/Helvetica-Bold.ttf");
-static OUTPUT: &str = "./output.pdf";
 static IMAGE: &[u8] = include_bytes!("../res/Titel.png");
+static OUTPUT: &str = "./output.pdf";
 
 mod week;
 
@@ -50,6 +53,13 @@ const INI_DATE_FORMAT: &str = "%Y-%m-%d";
 const DAYS_IN_WEEK: Days = Days::new(7);
 const ONE_DAY: Days = Days::new(1);
 
+enum Stage {
+    PreRender(isize),
+    FirstRender(Vec2),
+    FirstResize(Vec2),
+    Initialized(Vec2),
+}
+
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
 struct Args {
@@ -57,6 +67,23 @@ struct Args {
     zoom: f32,
     #[arg(short, long, default_value_t = false)]
     demo_pdf: bool,
+}
+
+struct MenuPdfApp<'a> {
+    _render_stage: Stage,
+    selected_monday: NaiveDate,
+    zoom: Option<f32>,
+    week_data: WeekData,
+    last_save: Instant,
+    engine_data_main: EngineData<'a>,
+    engine_data_note: EngineData<'a>,
+}
+
+#[derive(Clone)]
+struct EngineData<'a> {
+    file_resolver: Vec<(FileId, Bytes)>,
+    main_file: &'a str,
+    font_array: Vec<&'a [u8]>,
 }
 
 fn get_closest_last_monday(datum: &mut NaiveDate) -> NaiveDate {
@@ -67,16 +94,25 @@ fn get_closest_last_monday(datum: &mut NaiveDate) -> NaiveDate {
         .expect("Calculating closest past monday failed")
 }
 
-// fn main() -> eframe::Result {
 fn main() {
     let args = Args::parse();
+    let engine_data_main = EngineData {
+        file_resolver: [("./Titel.png".into_file_id(), IMAGE.into_bytes())].to_vec(),
+        main_file: TEMPLATE_MAIN_FILE,
+        font_array: [FONT_H, FONT_H_B].to_vec(),
+    };
+    let engine_data_notes = EngineData {
+        file_resolver: [("./Titel.png".into_file_id(), IMAGE.into_bytes())].to_vec(),
+        main_file: TEMPLATE_NOTES_FILE,
+        font_array: [FONT_H, FONT_H_B].to_vec(),
+    };
 
     env_logger::init(); // Log to stderr (if you run with `RUST_LOG=debug`).
-    let app = MenuPdfApp::new(args.zoom);
+    let app = MenuPdfApp::new(args.zoom, engine_data_main.clone(), engine_data_notes);
     match args.demo_pdf {
         true => {
             let demo_week_data = week::load_demo_week(&app.selected_monday, DEMO_INI_FILE_PATH);
-            write_pdf(&demo_week_data, &app.selected_monday);
+            write_pdf(&demo_week_data, &app.selected_monday, engine_data_main.clone());
             open::that(OUTPUT).expect("Error opening PDF");
         }
         false => {
@@ -90,23 +126,8 @@ fn main() {
     }
 }
 
-enum Stage {
-    PreRender(isize),
-    FirstRender(Vec2),
-    FirstResize(Vec2),
-    Initialized(Vec2),
-}
-
-struct MenuPdfApp {
-    _render_stage: Stage,
-    selected_monday: NaiveDate,
-    zoom: Option<f32>,
-    week_data: WeekData,
-    last_save: Instant,
-}
-
-impl MenuPdfApp {
-    pub fn new(zoom: f32) -> Self {
+impl<'a> MenuPdfApp<'a> {
+    pub fn new(zoom: f32, engine_data_main: EngineData<'a>, engine_data_note: EngineData<'a>) -> Self {
         let mut datum = Local::now().date_naive();
         datum = get_closest_last_monday(&mut datum);
 
@@ -119,11 +140,13 @@ impl MenuPdfApp {
             },
             week_data: week::load_week(&datum),
             last_save: Instant::now(),
+            engine_data_main,
+            engine_data_note,
         }
     }
 }
 
-impl MenuPdfApp {
+impl MenuPdfApp<'_> {
     fn pre_render(&mut self, ctx: &eframe::egui::Context) {
         egui::Window::new("pre_render")
             .title_bar(false)
@@ -220,14 +243,19 @@ impl MenuPdfApp {
             ui.label("");
             if ui.button("Drucken").clicked() {
                 self.save_if_needed(&datum);
-                write_pdf(&self.week_data, &datum);
-                open::that(OUTPUT).expect("Error opening PDF");
+                write_pdf(&self.week_data, &datum, self.engine_data_main.clone());
+                open::that(OUTPUT).expect("Error opening main PDF");
+            }
+            if ui.button("Drucken - Notizen").clicked() {
+                self.save_if_needed(&datum);
+                write_pdf(&self.week_data, &datum, self.engine_data_note.clone());
+                open::that(OUTPUT).expect("Error opening note PDF");
             }
         });
     }
 
     fn check_if_time_passed(&mut self) {
-        if (Instant::now() - self.last_save > Duration::from_secs(5)) {
+        if Instant::now() - self.last_save > Duration::from_secs(5) {
             info!("Time has passed. Checking if save is needed");
             self.last_save = Instant::now();
             self.save_if_needed(&self.selected_monday.clone());
@@ -243,7 +271,7 @@ impl MenuPdfApp {
     }
 }
 
-fn write_pdf(week_data: &WeekData, datum: &NaiveDate) {
+fn write_pdf(week_data: &WeekData, datum: &NaiveDate, engine_data: EngineData) {
     let mut date = *datum;
     let mut dict = Dict::new();
     for (y, day) in DAY_SHORT.iter().enumerate() {
@@ -259,14 +287,10 @@ fn write_pdf(week_data: &WeekData, datum: &NaiveDate) {
         }
         date = date + ONE_DAY;
     }
-    let template = TypstEngine::builder()
-        .with_static_file_resolver([("./Titel.png", IMAGE)])
-        .main_file(TEMPLATE_FILE)
-        .fonts([FONT_H, FONT_H_B])
-        .build();
+    let engine = create_engine(engine_data);
 
     // Run it
-    let doc = template
+    let doc = engine
         .compile_with_input(dict)
         .output
         .expect("typst::compile() returned an error!");
@@ -277,7 +301,15 @@ fn write_pdf(week_data: &WeekData, datum: &NaiveDate) {
     fs::write(OUTPUT, pdf).expect("Could not write pdf.");
 }
 
-impl eframe::App for MenuPdfApp {
+fn create_engine(engine_data: EngineData) -> TypstEngine<TypstTemplateMainFile> {
+    TypstEngine::builder()
+        .with_static_file_resolver(engine_data.file_resolver)
+        .main_file(engine_data.main_file)
+        .fonts(engine_data.font_array)
+        .build()
+}
+
+impl eframe::App for MenuPdfApp<'_> {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         ctx.set_visuals(Visuals::light());
         if let Some(x) = self.zoom { ctx.set_zoom_factor(x) }
