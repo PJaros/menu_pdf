@@ -19,4 +19,4 @@ a virtualized Windows 11 as egui doesn't support that.
  - Uses https://github.com/clap-rs/clap to interpret command-line options
 
 # Todo
- - Add further typst templates
+ - Add 3rd typst template spanning

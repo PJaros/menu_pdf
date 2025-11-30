@@ -42,8 +42,6 @@ const DAY_LONG: [&str; 7] = [
     "Sonntag",
 ];
 const DAY_SHORT: [&str; 7] = ["mo", "di", "mi", "do", "fr", "sa", "so"];
-const DEMO_INI_FILE_PATH: &str = "./test_res/demo_menu.ini";
-const DEMO_INI_SECTION: &str = "Week";
 const INI_FILE_PATH: &str = "menu.ini";
 const UI_DATE_FORMAT: &str = "%e. %b %Y";
 const PDF_DATE_FORMAT: &str = "%e. %B";
@@ -103,7 +101,7 @@ fn main() {
     let app = MenuPdfApp::new(args.zoom, engine_array);
     match args.demo_pdf {
         true => {
-            let demo_week_data = week::load_demo_week(&app.selected_monday, DEMO_INI_FILE_PATH);
+            let demo_week_data = week::load_static_demo_week();
             write_pdf(&demo_week_data, &app.selected_monday, &app.engine_array[0]);
             open::that(OUTPUT).expect("Error opening PDF");
         }
