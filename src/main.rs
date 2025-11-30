@@ -13,13 +13,11 @@ use std::path::Path;
 use week::WeekData;
 
 use std::fs;
-use std::time::{Instant, Duration};
-use typst::foundations::{Bytes, Dict, IntoValue};
+use std::time::{Duration, Instant};
+use typst::foundations::{Dict, IntoValue};
 use typst_as_lib::{TypstEngine, TypstTemplateMainFile};
 
 use clap::Parser;
-use typst::syntax::FileId;
-use typst_as_lib::conversions::{IntoBytes, IntoFileId};
 
 static TEMPLATE_MAIN_FILE: &str = include_str!("../res/wochenmenu.md");
 static TEMPLATE_NOTES_FILE: &str = include_str!("../res/wochenmenu_notes.md");
@@ -69,21 +67,13 @@ struct Args {
     demo_pdf: bool,
 }
 
-struct MenuPdfApp<'a> {
+struct MenuPdfApp {
     _render_stage: Stage,
     selected_monday: NaiveDate,
     zoom: Option<f32>,
     week_data: WeekData,
     last_save: Instant,
-    engine_data_main: EngineData<'a>,
-    engine_data_note: EngineData<'a>,
-}
-
-#[derive(Clone)]
-struct EngineData<'a> {
-    file_resolver: Vec<(FileId, Bytes)>,
-    main_file: &'a str,
-    font_array: Vec<&'a [u8]>,
+    engine_array: Vec<TypstEngine<TypstTemplateMainFile>>,
 }
 
 fn get_closest_last_monday(datum: &mut NaiveDate) -> NaiveDate {
@@ -96,23 +86,25 @@ fn get_closest_last_monday(datum: &mut NaiveDate) -> NaiveDate {
 
 fn main() {
     let args = Args::parse();
-    let engine_data_main = EngineData {
-        file_resolver: [("./Titel.png".into_file_id(), IMAGE.into_bytes())].to_vec(),
-        main_file: TEMPLATE_MAIN_FILE,
-        font_array: [FONT_H, FONT_H_B].to_vec(),
-    };
-    let engine_data_notes = EngineData {
-        file_resolver: [("./Titel.png".into_file_id(), IMAGE.into_bytes())].to_vec(),
-        main_file: TEMPLATE_NOTES_FILE,
-        font_array: [FONT_H, FONT_H_B].to_vec(),
-    };
+    let engine_array: Vec<TypstEngine<TypstTemplateMainFile>> = vec![
+        TypstEngine::builder()
+            .with_static_file_resolver([("./Titel.png", IMAGE)])
+            .main_file(TEMPLATE_MAIN_FILE)
+            .fonts([FONT_H, FONT_H_B])
+            .build(),
+        TypstEngine::builder()
+            .with_static_file_resolver([("./Titel.png", IMAGE)])
+            .main_file(TEMPLATE_NOTES_FILE)
+            .fonts([FONT_H, FONT_H_B])
+            .build(),
+    ];
 
     env_logger::init(); // Log to stderr (if you run with `RUST_LOG=debug`).
-    let app = MenuPdfApp::new(args.zoom, engine_data_main.clone(), engine_data_notes);
+    let app = MenuPdfApp::new(args.zoom, engine_array);
     match args.demo_pdf {
         true => {
             let demo_week_data = week::load_demo_week(&app.selected_monday, DEMO_INI_FILE_PATH);
-            write_pdf(&demo_week_data, &app.selected_monday, engine_data_main.clone());
+            write_pdf(&demo_week_data, &app.selected_monday, &app.engine_array[0]);
             open::that(OUTPUT).expect("Error opening PDF");
         }
         false => {
@@ -126,8 +118,8 @@ fn main() {
     }
 }
 
-impl<'a> MenuPdfApp<'a> {
-    pub fn new(zoom: f32, engine_data_main: EngineData<'a>, engine_data_note: EngineData<'a>) -> Self {
+impl MenuPdfApp {
+    pub fn new(zoom: f32, engine_array: Vec<TypstEngine<TypstTemplateMainFile>>) -> Self {
         let mut datum = Local::now().date_naive();
         datum = get_closest_last_monday(&mut datum);
 
@@ -140,13 +132,12 @@ impl<'a> MenuPdfApp<'a> {
             },
             week_data: week::load_week(&datum),
             last_save: Instant::now(),
-            engine_data_main,
-            engine_data_note,
+            engine_array,
         }
     }
 }
 
-impl MenuPdfApp<'_> {
+impl MenuPdfApp {
     fn pre_render(&mut self, ctx: &eframe::egui::Context) {
         egui::Window::new("pre_render")
             .title_bar(false)
@@ -239,16 +230,24 @@ impl MenuPdfApp<'_> {
                 );
                 ui.end_row();
             }
-            
+
             ui.label("");
             if ui.button("Drucken").clicked() {
                 self.save_if_needed(&datum);
-                write_pdf(&self.week_data, &datum, self.engine_data_main.clone());
+                write_pdf(
+                    &self.week_data,
+                    &datum,
+                    self.engine_array.first().expect("Engine 0 not found"),
+                );
                 open::that(OUTPUT).expect("Error opening main PDF");
             }
             if ui.button("Drucken - Notizen").clicked() {
                 self.save_if_needed(&datum);
-                write_pdf(&self.week_data, &datum, self.engine_data_note.clone());
+                write_pdf(
+                    &self.week_data,
+                    &datum,
+                    self.engine_array.get(1).expect("Engine 1 not found"),
+                );
                 open::that(OUTPUT).expect("Error opening note PDF");
             }
         });
@@ -271,7 +270,7 @@ impl MenuPdfApp<'_> {
     }
 }
 
-fn write_pdf(week_data: &WeekData, datum: &NaiveDate, engine_data: EngineData) {
+fn write_pdf(week_data: &WeekData, datum: &NaiveDate, engine: &TypstEngine<TypstTemplateMainFile>) {
     let mut date = *datum;
     let mut dict = Dict::new();
     for (y, day) in DAY_SHORT.iter().enumerate() {
@@ -287,7 +286,6 @@ fn write_pdf(week_data: &WeekData, datum: &NaiveDate, engine_data: EngineData) {
         }
         date = date + ONE_DAY;
     }
-    let engine = create_engine(engine_data);
 
     // Run it
     let doc = engine
@@ -301,18 +299,12 @@ fn write_pdf(week_data: &WeekData, datum: &NaiveDate, engine_data: EngineData) {
     fs::write(OUTPUT, pdf).expect("Could not write pdf.");
 }
 
-fn create_engine(engine_data: EngineData) -> TypstEngine<TypstTemplateMainFile> {
-    TypstEngine::builder()
-        .with_static_file_resolver(engine_data.file_resolver)
-        .main_file(engine_data.main_file)
-        .fonts(engine_data.font_array)
-        .build()
-}
-
-impl eframe::App for MenuPdfApp<'_> {
+impl eframe::App for MenuPdfApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         ctx.set_visuals(Visuals::light());
-        if let Some(x) = self.zoom { ctx.set_zoom_factor(x) }
+        if let Some(x) = self.zoom {
+            ctx.set_zoom_factor(x)
+        }
         match self._render_stage {
             Stage::PreRender(mut pre_render_cycle) => {
                 self.pre_render(ctx);
