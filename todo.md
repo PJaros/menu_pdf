@@ -1,13 +1,8 @@
-# TODO
+# Add Application Icons/Images
 
- - Save on close
-   - Rewrite to https://github.com/emilk/egui/tree/main/examples/confirm_exit
-   - or automatically save without asking
- - Rearrange (remove?) load- and save-button
- - Integrate Typst
- - Make Save on close optional
- - Add Application Icons/Images
-   - Apply https://github.com/emilk/egui/tree/main/examples/images
-   - Apply https://docs.rs/egui/latest/egui/macro.include_image.html
-   - Apply "How do I change taskbar icon", https://github.com/emilk/egui/discussions/3971
- - Persist window location
+I'd like to change the application icon. I didn't take the time yet on how this is done for Linux and Windows.
+
+Links with example code:
+
+ - Apply "How do I change taskbar icon", https://github.com/emilk/egui/discussions/3971
+ - Apply https://docs.rs/egui/latest/egui/macro.include_image.html
