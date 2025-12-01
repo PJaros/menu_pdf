@@ -21,6 +21,7 @@ use clap::Parser;
 
 static TEMPLATE_MAIN_FILE: &str = include_str!("../res/wochenmenu.md");
 static TEMPLATE_NOTES_FILE: &str = include_str!("../res/wochenmenu_notes.md");
+static TEMPLATE_TUESDAY_FILE: &str = include_str!("../res/wochenmenu_tuesday.md");
 static FONT_H: &[u8] = include_bytes!("../res/Helvetica.ttf");
 static FONT_H_B: &[u8] = include_bytes!("../res/Helvetica-Bold.ttf");
 static IMAGE: &[u8] = include_bytes!("../res/Titel.png");
@@ -95,6 +96,11 @@ fn main() {
             .main_file(TEMPLATE_NOTES_FILE)
             .fonts([FONT_H, FONT_H_B])
             .build(),
+        TypstEngine::builder()
+            .with_static_file_resolver([("./Titel.png", IMAGE)])
+            .main_file(TEMPLATE_TUESDAY_FILE)
+            .fonts([FONT_H, FONT_H_B])
+            .build(),
     ];
 
     env_logger::init(); // Log to stderr (if you run with `RUST_LOG=debug`).
@@ -146,70 +152,71 @@ impl MenuPdfApp {
     }
     fn render(&mut self, ui: &mut egui::Ui) {
         let mut datum = self.selected_monday;
-        ui.horizontal(|ui| {
-            ui.label("Datum: ");
-            let left_button = ui.button("<");
-            let datepicker_button =
-                ui.add(DatePickerButton::new(&mut datum).format(UI_DATE_FORMAT));
-            let right_button = ui.button(">");
-
-            if left_button.clicked() {
-                self.save_if_needed(&datum);
-                self.last_save = Instant::now();
-                datum = datum
-                    .checked_sub_days(DAYS_IN_WEEK)
-                    .to_owned()
-                    .expect("Subtracting 7 days failed.");
-                self.selected_monday = datum;
-                self.week_data = week::load_week(&datum);
-            };
-            if datepicker_button.changed() {
-                datum = get_closest_last_monday(&mut datum).to_owned();
-                if self.selected_monday == datum {
-                    info!(
-                        "Same date. selected_monday: {}, datum: {}",
-                        self.selected_monday, datum
-                    );
-                } else {
-                    info!(
-                        "Different date. selected_monday: {}, datum: {}",
-                        self.selected_monday, datum
-                    );
-                    self.save_if_needed(&self.selected_monday.clone());
-                    self.last_save = Instant::now();
-                    let date_string = datum.format(INI_DATE_FORMAT).to_string();
-                    let date_str = date_string.as_str();
-                    let ini_path = Path::new(INI_FILE_PATH);
-                    let conf: Ini = match ini_path.exists() {
-                        true => Ini::load_from_file(ini_path).expect("Error loading ini file"),
-                        false => Ini::new(),
-                    };
-
-                    let mut week_string: WeekData = week::create_empty_week();
-                    for (y, day) in DAY_SHORT.iter().enumerate() {
-                        for (x, time) in TIME_SHORT.iter().enumerate() {
-                            let key = format!("{day}_{time}");
-                            week_string[y][x] = conf
-                                .get_from_or(Some(date_str), key.as_str(), "")
-                                .to_owned();
-                        }
-                    }
-                    self.week_data = week_string;
-                }
-                self.selected_monday = datum;
-            }
-            if right_button.clicked() {
-                self.save_if_needed(&datum);
-                datum = datum
-                    .checked_add_days(DAYS_IN_WEEK)
-                    .to_owned()
-                    .expect("Adding 7 days failed.");
-                self.selected_monday = datum;
-                self.week_data = week::load_week(&datum);
-            }
-        });
-
         egui::Grid::new("grid_id").show(ui, |ui| {
+            ui.label("Datum: ");
+            ui.horizontal(|ui| {
+                let left_button = ui.button("<");
+                let datepicker_button =
+                    ui.add(DatePickerButton::new(&mut datum).format(UI_DATE_FORMAT));
+                let right_button = ui.button(">");
+
+                if left_button.clicked() {
+                    self.save_if_needed(&datum);
+                    self.last_save = Instant::now();
+                    datum = datum
+                        .checked_sub_days(DAYS_IN_WEEK)
+                        .to_owned()
+                        .expect("Subtracting 7 days failed.");
+                    self.selected_monday = datum;
+                    self.week_data = week::load_week(&datum);
+                };
+                if datepicker_button.changed() {
+                    datum = get_closest_last_monday(&mut datum).to_owned();
+                    if self.selected_monday == datum {
+                        info!(
+                            "Same date. selected_monday: {}, datum: {}",
+                            self.selected_monday, datum
+                        );
+                    } else {
+                        info!(
+                            "Different date. selected_monday: {}, datum: {}",
+                            self.selected_monday, datum
+                        );
+                        self.save_if_needed(&self.selected_monday.clone());
+                        self.last_save = Instant::now();
+                        let date_string = datum.format(INI_DATE_FORMAT).to_string();
+                        let date_str = date_string.as_str();
+                        let ini_path = Path::new(INI_FILE_PATH);
+                        let conf: Ini = match ini_path.exists() {
+                            true => Ini::load_from_file(ini_path).expect("Error loading ini file"),
+                            false => Ini::new(),
+                        };
+
+                        let mut week_string: WeekData = week::create_empty_week();
+                        for (y, day) in DAY_SHORT.iter().enumerate() {
+                            for (x, time) in TIME_SHORT.iter().enumerate() {
+                                let key = format!("{day}_{time}");
+                                week_string[y][x] = conf
+                                    .get_from_or(Some(date_str), key.as_str(), "")
+                                    .to_owned();
+                            }
+                        }
+                        self.week_data = week_string;
+                    }
+                    self.selected_monday = datum;
+                }
+                if right_button.clicked() {
+                    self.save_if_needed(&datum);
+                    datum = datum
+                        .checked_add_days(DAYS_IN_WEEK)
+                        .to_owned()
+                        .expect("Adding 7 days failed.");
+                    self.selected_monday = datum;
+                    self.week_data = week::load_week(&datum);
+                }
+            });
+            ui.end_row();
+
             ui.label("");
             for s in TIME_LONG.into_iter() {
                 ui.label(s);
@@ -228,26 +235,42 @@ impl MenuPdfApp {
                 );
                 ui.end_row();
             }
-
             ui.label("");
-            if ui.button("Drucken").clicked() {
-                self.save_if_needed(&datum);
-                write_pdf(
-                    &self.week_data,
-                    &datum,
-                    self.engine_array.first().expect("Engine 0 not found"),
-                );
-                open::that(OUTPUT).expect("Error opening main PDF");
-            }
-            if ui.button("Drucken - Notizen").clicked() {
-                self.save_if_needed(&datum);
-                write_pdf(
-                    &self.week_data,
-                    &datum,
-                    self.engine_array.get(1).expect("Engine 1 not found"),
-                );
-                open::that(OUTPUT).expect("Error opening note PDF");
-            }
+            ui.vertical(|ui| {
+                ui.add_space(10.0);
+                if ui.button("Drucken").clicked() {
+                    self.save_if_needed(&datum);
+                    write_pdf(
+                        &self.week_data,
+                        &datum,
+                        self.engine_array.first().expect("Engine 0 not found"),
+                    );
+                    open::that(OUTPUT).expect("Error opening main PDF");
+                }
+                if ui.button("Drucken - Notizen").clicked() {
+                    self.save_if_needed(&datum);
+                    write_pdf(
+                        &self.week_data,
+                        &datum,
+                        self.engine_array.get(1).expect("Engine 1 not found"),
+                    );
+                    open::that(OUTPUT).expect("Error opening note PDF");
+                }
+                if ui.button("Drucken - Dienstag").clicked() {
+                    self.save_if_needed(&datum);
+                    let next_week = datum
+                        .checked_add_days(DAYS_IN_WEEK)
+                        .to_owned()
+                        .expect("Adding 7 days failed.");
+                    let next_week_data = week::load_week(&next_week);
+                    write_tuesday_pdf(
+                        [&self.week_data, &next_week_data],
+                        &datum,
+                        self.engine_array.get(2).expect("Engine 2 not found"),
+                    );
+                    open::that(OUTPUT).expect("Error opening note PDF");
+                }
+            });
         });
     }
 
@@ -283,6 +306,49 @@ fn write_pdf(week_data: &WeekData, datum: &NaiveDate, engine: &TypstEngine<Typst
             dict.insert(key.into(), week_data[y][x].trim().into_value());
         }
         date = date + ONE_DAY;
+    }
+
+    // Run it
+    let doc = engine
+        .compile_with_input(dict)
+        .output
+        .expect("typst::compile() returned an error!");
+
+    // Create pdf
+    let options = Default::default();
+    let pdf = typst_pdf::pdf(&doc, &options).expect("Could not generate pdf.");
+    fs::write(OUTPUT, pdf).expect("Could not write pdf.");
+}
+
+fn write_tuesday_pdf(
+    week_data_arr: [&WeekData; 2],
+    datum: &NaiveDate,
+    engine: &TypstEngine<TypstTemplateMainFile>,
+) {
+    let date = *datum;
+    let mut dict = Dict::new();
+    for count in 1..=7_usize {
+        // count 1,2,3,4,5,6,7
+        let cur_date = date + Days::new(count as u64);
+        let day_of_week = count % 7; // convert to 1,2,3,4,5,6,0
+        let day = DAY_SHORT[day_of_week];
+        dict.insert(
+            format!("{day}_day").into(),
+            DAY_LONG[day_of_week].into_value(),
+        );
+        let datum_str = &cur_date.format(PDF_DATE_FORMAT).to_string();
+        dict.insert(
+            format!("{day}_date").into(),
+            datum_str.to_owned().into_value(),
+        );
+        for (x, time) in TIME_SHORT.iter().enumerate() {
+            let key = format!("{day}_{time}");
+            let arr_count = count / 7;
+            dict.insert(
+                key.into(),
+                week_data_arr[arr_count][day_of_week][x].trim().into_value(),
+            );
+        }
     }
 
     // Run it

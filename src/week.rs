@@ -64,10 +64,7 @@ pub fn load_static_demo_week() -> WeekData {
             "Käsfladen".to_string(),
             "Wienerli oder Haloumi im Schlafrock".to_string(),
         ],
-        [
-            "Braten mit Nudeln".to_string(),
-            "Cafe complet".to_string(),
-        ],
+        ["Braten mit Nudeln".to_string(), "Cafe complet".to_string()],
         [
             "Kalbsgeschnetzeltes mit Rösti".to_string(),
             "Fruchtfladen".to_string(),

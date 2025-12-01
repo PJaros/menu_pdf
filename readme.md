@@ -19,4 +19,9 @@ a virtualized Windows 11 as egui doesn't support that.
  - Uses https://github.com/clap-rs/clap to interpret command-line options
 
 # Todo
- - Add 3rd typst template spanning
+ - Add Application Icons/Images
+   I have collected some links how to change the executable icons and how to change the icon in the taskbar. I
+   haven't spend a lot of time with this, just saved the links for later.
+   - Example on how to load images and display it in egui: https://github.com/emilk/egui/tree/main/examples/images
+   - Makro on how to include external files into the exetuable: https://docs.rs/egui/latest/egui/macro.include_image.html
+   - How do I change taskbar icon: https://github.com/emilk/egui/discussions/3971
