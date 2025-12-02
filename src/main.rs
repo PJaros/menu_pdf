@@ -20,8 +20,6 @@ use typst_as_lib::{TypstEngine, TypstTemplateMainFile};
 use clap::Parser;
 
 static TEMPLATE_MAIN_FILE: &str = include_str!("../res/wochenmenu.md");
-static TEMPLATE_NOTES_FILE: &str = include_str!("../res/wochenmenu_notes.md");
-static TEMPLATE_TUESDAY_FILE: &str = include_str!("../res/wochenmenu_tuesday.md");
 static FONT_H: &[u8] = include_bytes!("../res/Helvetica.ttf");
 static FONT_H_B: &[u8] = include_bytes!("../res/Helvetica-Bold.ttf");
 static IMAGE: &[u8] = include_bytes!("../res/Titel.png");
@@ -42,13 +40,25 @@ const DAY_LONG: [&str; 7] = [
     "Samstag",
     "Sonntag",
 ];
+const MONTH: [&str; 12] = [
+    "Januar",
+    "Februar",
+    "März",
+    "April",
+    "Mai",
+    "Juni",
+    "Juli",
+    "August",
+    "September",
+    "Oktober",
+    "November",
+    "Dezember",
+];
 const DAY_SHORT: [&str; 7] = ["mo", "di", "mi", "do", "fr", "sa", "so"];
 const INI_FILE_PATH: &str = "menu.ini";
 const UI_DATE_FORMAT: &str = "%e. %b %Y";
-const PDF_DATE_FORMAT: &str = "%e. %B";
 const INI_DATE_FORMAT: &str = "%Y-%m-%d";
 const DAYS_IN_WEEK: Days = Days::new(7);
-const ONE_DAY: Days = Days::new(1);
 
 enum Stage {
     PreRender(isize),
@@ -72,7 +82,7 @@ struct MenuPdfApp {
     zoom: Option<f32>,
     week_data: WeekData,
     last_save: Instant,
-    engine_array: Vec<TypstEngine<TypstTemplateMainFile>>,
+    engine: TypstEngine<TypstTemplateMainFile>,
 }
 
 fn get_closest_last_monday(datum: &mut NaiveDate) -> NaiveDate {
@@ -85,30 +95,19 @@ fn get_closest_last_monday(datum: &mut NaiveDate) -> NaiveDate {
 
 fn main() {
     let args = Args::parse();
-    let engine_array: Vec<TypstEngine<TypstTemplateMainFile>> = vec![
+    let engine: TypstEngine<TypstTemplateMainFile> =
         TypstEngine::builder()
             .with_static_file_resolver([("./Titel.png", IMAGE)])
             .main_file(TEMPLATE_MAIN_FILE)
             .fonts([FONT_H, FONT_H_B])
-            .build(),
-        TypstEngine::builder()
-            .with_static_file_resolver([("./Titel.png", IMAGE)])
-            .main_file(TEMPLATE_NOTES_FILE)
-            .fonts([FONT_H, FONT_H_B])
-            .build(),
-        TypstEngine::builder()
-            .with_static_file_resolver([("./Titel.png", IMAGE)])
-            .main_file(TEMPLATE_TUESDAY_FILE)
-            .fonts([FONT_H, FONT_H_B])
-            .build(),
-    ];
+            .build();
 
     env_logger::init(); // Log to stderr (if you run with `RUST_LOG=debug`).
-    let app = MenuPdfApp::new(args.zoom, engine_array);
+    let app = MenuPdfApp::new(args.zoom, engine);
     match args.demo_pdf {
         true => {
             let demo_week_data = week::load_static_demo_week();
-            write_pdf(&demo_week_data, &app.selected_monday, &app.engine_array[0]);
+            write_pdf(demo_week_data, &app.selected_monday, &app.engine);
             open::that(OUTPUT).expect("Error opening PDF");
         }
         false => {
@@ -123,7 +122,7 @@ fn main() {
 }
 
 impl MenuPdfApp {
-    pub fn new(zoom: f32, engine_array: Vec<TypstEngine<TypstTemplateMainFile>>) -> Self {
+    pub fn new(zoom: f32, engine: TypstEngine<TypstTemplateMainFile>) -> Self {
         let mut datum = Local::now().date_naive();
         datum = get_closest_last_monday(&mut datum);
 
@@ -136,13 +135,13 @@ impl MenuPdfApp {
             },
             week_data: week::load_week(&datum),
             last_save: Instant::now(),
-            engine_array,
+            engine,
         }
     }
 }
 
 impl MenuPdfApp {
-    fn pre_render(&mut self, ctx: &eframe::egui::Context) {
+    fn pre_render(&mut self, ctx: &egui::Context) {
         egui::Window::new("pre_render")
             .title_bar(false)
             .fixed_pos((0.0, 0.0))
@@ -240,35 +239,17 @@ impl MenuPdfApp {
                 ui.add_space(10.0);
                 if ui.button("Drucken").clicked() {
                     self.save_if_needed(&datum);
-                    write_pdf(
-                        &self.week_data,
-                        &datum,
-                        self.engine_array.first().expect("Engine 0 not found"),
-                    );
-                    open::that(OUTPUT).expect("Error opening main PDF");
-                }
-                if ui.button("Drucken - Notizen").clicked() {
-                    self.save_if_needed(&datum);
-                    write_pdf(
-                        &self.week_data,
-                        &datum,
-                        self.engine_array.get(1).expect("Engine 1 not found"),
-                    );
-                    open::that(OUTPUT).expect("Error opening note PDF");
-                }
-                if ui.button("Drucken - Dienstag").clicked() {
-                    self.save_if_needed(&datum);
                     let next_week = datum
                         .checked_add_days(DAYS_IN_WEEK)
                         .to_owned()
                         .expect("Adding 7 days failed.");
                     let next_week_data = week::load_week(&next_week);
-                    write_tuesday_pdf(
-                        [&self.week_data, &next_week_data],
+                    write_pdf(
+                        [self.week_data.clone(), next_week_data],
                         &datum,
-                        self.engine_array.get(2).expect("Engine 2 not found"),
+                        &self.engine,
                     );
-                    open::that(OUTPUT).expect("Error opening note PDF");
+                    open::that(OUTPUT).expect("Error opening main PDF");
                 }
             });
         });
@@ -291,58 +272,33 @@ impl MenuPdfApp {
     }
 }
 
-fn write_pdf(week_data: &WeekData, datum: &NaiveDate, engine: &TypstEngine<TypstTemplateMainFile>) {
-    let mut date = *datum;
-    let mut dict = Dict::new();
-    for (y, day) in DAY_SHORT.iter().enumerate() {
-        dict.insert(format!("{day}_day").into(), DAY_LONG[y].into_value());
-        let datum_str = &date.format(PDF_DATE_FORMAT).to_string();
-        dict.insert(
-            format!("{day}_date").into(),
-            datum_str.to_owned().into_value(),
-        );
-        for (x, time) in TIME_SHORT.iter().enumerate() {
-            let key = format!("{day}_{time}");
-            dict.insert(key.into(), week_data[y][x].trim().into_value());
-        }
-        date = date + ONE_DAY;
-    }
-
-    // Run it
-    let doc = engine
-        .compile_with_input(dict)
-        .output
-        .expect("typst::compile() returned an error!");
-
-    // Create pdf
-    let options = Default::default();
-    let pdf = typst_pdf::pdf(&doc, &options).expect("Could not generate pdf.");
-    fs::write(OUTPUT, pdf).expect("Could not write pdf.");
-}
-
-fn write_tuesday_pdf(
-    week_data_arr: [&WeekData; 2],
+fn write_pdf(
+    week_data_arr: [WeekData; 2],
     datum: &NaiveDate,
     engine: &TypstEngine<TypstTemplateMainFile>,
 ) {
     let date = *datum;
     let mut dict = Dict::new();
-    for count in 1..=7_usize {
-        // count 1,2,3,4,5,6,7
+    for count in 0..=7_usize {
+        // count 0,1,2,3,4,5,6,7
         let cur_date = date + Days::new(count as u64);
-        let day_of_week = count % 7; // convert to 1,2,3,4,5,6,0
+        let day_of_week = count % 7; // convert to 0,1,2,3,4,5,6,0
         let day = DAY_SHORT[day_of_week];
+        let add_on = if count >= 7 { "_2" } else { "" };
         dict.insert(
-            format!("{day}_day").into(),
+            format!("{day}_day{add_on}").into(),
             DAY_LONG[day_of_week].into_value(),
         );
-        let datum_str = &cur_date.format(PDF_DATE_FORMAT).to_string();
+        let day_of_month = cur_date.day();
+        let month = date.month0();
+        let month_str = MONTH[month as usize];
+        let datum_str = format!("{day_of_month}. {month_str}");
         dict.insert(
-            format!("{day}_date").into(),
+            format!("{day}_date{add_on}").into(),
             datum_str.to_owned().into_value(),
         );
         for (x, time) in TIME_SHORT.iter().enumerate() {
-            let key = format!("{day}_{time}");
+            let key = format!("{day}_{time}{add_on}");
             let arr_count = count / 7;
             dict.insert(
                 key.into(),
@@ -351,15 +307,14 @@ fn write_tuesday_pdf(
         }
     }
 
-    // Run it
+    // Create document
     let doc = engine
         .compile_with_input(dict)
         .output
         .expect("typst::compile() returned an error!");
 
-    // Create pdf
-    let options = Default::default();
-    let pdf = typst_pdf::pdf(&doc, &options).expect("Could not generate pdf.");
+    // Render pdf
+    let pdf = typst_pdf::pdf(&doc, &Default::default()).expect("Could not render pdf.");
     fs::write(OUTPUT, pdf).expect("Could not write pdf.");
 }
 

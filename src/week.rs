@@ -42,8 +42,8 @@ pub fn load_week(datum: &NaiveDate) -> WeekData {
     week_string
 }
 
-pub fn load_static_demo_week() -> WeekData {
-    let week_string: WeekData = [
+pub fn load_static_demo_week() -> [WeekData; 2] {
+    let week_string_1: WeekData = [
         [
             "Steinpilzrisotto mit Randengemüse".to_string(),
             "Cafe Complet".to_string(),
@@ -70,7 +70,19 @@ pub fn load_static_demo_week() -> WeekData {
             "Fruchtfladen".to_string(),
         ],
     ];
-    week_string
+    let week_string_2: WeekData = [
+        [
+            "Nudeln an Peperonirahmsauce".to_string(),
+            "Cafe complet".to_string(),
+        ],
+        ["".to_string(), "".to_string()],
+        ["".to_string(), "".to_string()],
+        ["".to_string(), "".to_string()],
+        ["".to_string(), "".to_string()],
+        ["".to_string(), "".to_string()],
+        ["".to_string(), "".to_string()],
+    ];
+    [week_string_1, week_string_2]
 }
 
 pub fn save_week(week_data: &WeekData, date_str: &str) {
