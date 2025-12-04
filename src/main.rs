@@ -17,7 +17,7 @@ use std::time::{Duration, Instant};
 use typst::foundations::{Dict, IntoValue};
 use typst_as_lib::{TypstEngine, TypstTemplateMainFile};
 
-use clap::Parser;
+use clap::{Parser, crate_version};
 
 static TEMPLATE_MAIN_FILE: &str = include_str!("../res/wochenmenu.md");
 static FONT_H: &[u8] = include_bytes!("../res/Helvetica.ttf");
@@ -95,12 +95,11 @@ fn get_closest_last_monday(datum: &mut NaiveDate) -> NaiveDate {
 
 fn main() {
     let args = Args::parse();
-    let engine: TypstEngine<TypstTemplateMainFile> =
-        TypstEngine::builder()
-            .with_static_file_resolver([("./Titel.png", IMAGE)])
-            .main_file(TEMPLATE_MAIN_FILE)
-            .fonts([FONT_H, FONT_H_B])
-            .build();
+    let engine: TypstEngine<TypstTemplateMainFile> = TypstEngine::builder()
+        .with_static_file_resolver([("./Titel.png", IMAGE)])
+        .main_file(TEMPLATE_MAIN_FILE)
+        .fonts([FONT_H, FONT_H_B])
+        .build();
 
     env_logger::init(); // Log to stderr (if you run with `RUST_LOG=debug`).
     let app = MenuPdfApp::new(args.zoom, engine);
@@ -116,7 +115,12 @@ fn main() {
                 ..Default::default()
             };
 
-            let _ = eframe::run_native(TITLE, options, Box::new(|_cc| Ok(Box::new(app))));
+            let version = crate_version!();
+            let _ = eframe::run_native(
+                format!("{TITLE} - v{version}").as_str(),
+                options,
+                Box::new(|_cc| Ok(Box::new(app))),
+            );
         }
     }
 }

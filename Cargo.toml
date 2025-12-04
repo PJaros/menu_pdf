@@ -1,6 +1,6 @@
 [package]
 name = "menu_pdf"
-version = "0.1.0"
+version = "1.0.0"
 edition = "2024"
 authors = ["Paul Jaros <jaros.paul@gmail.com>"]
 license = "MIT OR Apache-2.0"
@@ -13,19 +13,19 @@ egui_extras = { version = "0.33.2", features = ["datepicker"] }
 env_logger = { version = "0.11.8", default-features = false, features = ["auto-color", "humantime"] }
 chrono = "0.4.42"
 rust-ini = "0.21.3"
-log = "0.4.28"
+log = "0.4.29"
 
 # Generate PDF with typst
 typst-as-lib = "0.15.0"
 # derive_typst_intoval = "0.6.0"
-typst-pdf = "0.14.0"
-typst = "0.14.0"
+typst-pdf = "0.14.1"
+typst = "0.14.1"
 
 # Open file (in this case the generated PDF) with the OS specified tool
 open = "5.3.3"
 
 # Commandline parsers
-clap = { version = "4.5.53", features = ["derive"] }
+clap = { version = "4.5.53", features = ["derive", "cargo"] }
 
 [profile.release]
 #opt-level = "z"
