@@ -52,7 +52,6 @@ formating this in a word processor is a repetitive tedious job. A program helps 
 - The GUI changes the window size when the computer goes to sleep and wakes up.
 
 # Further ideas
- - Show the version on the GUI.
  - Add Application Icons on the executable and in the taskbar
 
    I have collected some links how to change the executable icons and how to change the icon in the taskbar. I
