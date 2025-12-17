@@ -51,6 +51,9 @@ formating this in a word processor is a repetitive tedious job. A program helps 
 - Egui needs a rather ugly hack to resize the window automatically to the minimal needed size of its widgets.
 - The GUI changes the window size when the computer goes to sleep and wakes up.
 
+# Todo
+- Show other typst menu card examples
+
 # Further ideas
  - Add Application Icons on the executable and in the taskbar
 

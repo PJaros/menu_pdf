@@ -19,7 +19,7 @@ use typst_as_lib::{TypstEngine, TypstTemplateMainFile};
 
 use clap::{Parser, crate_version};
 
-static TEMPLATE_MAIN_FILE: &str = include_str!("../res/wochenmenu.md");
+static TEMPLATE_MAIN_FILE: &str = include_str!("../res/wochenmenu.typ");
 static FONT_H: &[u8] = include_bytes!("../res/Helvetica.ttf");
 static FONT_H_B: &[u8] = include_bytes!("../res/Helvetica-Bold.ttf");
 static IMAGE: &[u8] = include_bytes!("../res/Titel.png");
