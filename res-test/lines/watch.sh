@@ -1,2 +1,2 @@
 # /bin/sh
-typst watch --font-path . typst_lines.typ
+typst watch --font-path . lines.typ
