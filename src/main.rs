@@ -294,7 +294,7 @@ fn write_pdf(
             DAY_LONG[day_of_week].into_value(),
         );
         let day_of_month = cur_date.day();
-        let month = date.month0();
+        let month = cur_date.month0();
         let month_str = MONTH[month as usize];
         let datum_str = format!("{day_of_month}. {month_str}");
         dict.insert(
